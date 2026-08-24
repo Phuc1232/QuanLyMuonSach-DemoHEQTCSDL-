@@ -97,6 +97,96 @@ BEGIN
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
         SELECT N'Lỗi: ' + ERROR_MESSAGE() AS ThongBao, 0 AS IsSuccess;
     END CATCH
+---------------------------------------------------------------------
+-- 4. KỊCH BẢN 4: BẾ TẮC (DEADLOCK - CROSS DEPENDENCY)
+---------------------------------------------------------------------
+-- Giao tác T1: Khóa CS001 trước -> Chờ -> Đòi khóa tiếp CS002
+CREATE OR ALTER PROCEDURE [dbo].[sp_Demo_Deadlock_T1]
+    @p_DelaySeconds INT = 5
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @delayStr VARCHAR(10) = '00:00:' + RIGHT('00' + CAST(@p_DelaySeconds AS VARCHAR(2)), 2);
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Bước 1: T1 chiếm giữ độc quyền (X-Lock) cuốn sách CS001
+        UPDATE CuonSach 
+        SET TinhTrang = 'CapNhat_T1' 
+        WHERE MaCuonSach = 'CS001';
+        
+        PRINT N'[T1] Đã khóa thành công CS001. Đang giữ khóa và chờ ' + CAST(@p_DelaySeconds AS NVARCHAR(10)) + N' giây...';
+        
+        -- Giữ giao tác mở và tạm dừng để T2 kịp chiếm khóa CS002
+        WAITFOR DELAY @delayStr;
+        
+        -- Bước 2: T1 cố gắng chiếm khóa tiếp cuốn sách CS002 (lúc này đang bị T2 nắm giữ)
+        PRINT N'[T1] Đang yêu cầu khóa CS002...';
+        UPDATE CuonSach 
+        SET TinhTrang = 'HoanTat_T1' 
+        WHERE MaCuonSach = 'CS002';
+        
+        COMMIT TRANSACTION;
+        SELECT N'Giao dịch T1 hoàn thành thành công!' AS ThongBao, 1 AS IsSuccess, 0 AS ErrorCode;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        
+        IF ERROR_NUMBER() = 1205
+        BEGIN
+            SELECT N'Giao dịch T1 bị SQL Server chọn làm NẠN NHÂN DEADLOCK (Victim - Error 1205) và tự động Rollback!' AS ThongBao, 0 AS IsSuccess, 1205 AS ErrorCode;
+        END
+        ELSE
+        BEGIN
+            SELECT N'Lỗi T1: ' + ERROR_MESSAGE() AS ThongBao, 0 AS IsSuccess, ERROR_NUMBER() AS ErrorCode;
+        END
+    END CATCH
+END
+GO
+
+-- Giao tác T2: Khóa CS002 trước -> Chờ -> Đòi khóa tiếp CS001
+CREATE OR ALTER PROCEDURE [dbo].[sp_Demo_Deadlock_T2]
+    @p_DelaySeconds INT = 5
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @delayStr VARCHAR(10) = '00:00:' + RIGHT('00' + CAST(@p_DelaySeconds AS VARCHAR(2)), 2);
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Bước 1: T2 chiếm giữ độc quyền (X-Lock) cuốn sách CS002
+        UPDATE CuonSach 
+        SET TinhTrang = 'CapNhat_T2' 
+        WHERE MaCuonSach = 'CS002';
+        
+        PRINT N'[T2] Đã khóa thành công CS002. Đang giữ khóa và chờ ' + CAST(@p_DelaySeconds AS NVARCHAR(10)) + N' giây...';
+        
+        -- Giữ giao tác mở và tạm dừng để T1 kịp chiếm khóa CS001
+        WAITFOR DELAY @delayStr;
+        
+        -- Bước 2: T2 cố gắng chiếm khóa tiếp cuốn sách CS001 (lúc này đang bị T1 nắm giữ)
+        PRINT N'[T2] Đang yêu cầu khóa CS001...';
+        UPDATE CuonSach 
+        SET TinhTrang = 'HoanTat_T2' 
+        WHERE MaCuonSach = 'CS001';
+        
+        COMMIT TRANSACTION;
+        SELECT N'Giao dịch T2 hoàn thành thành công!' AS ThongBao, 1 AS IsSuccess, 0 AS ErrorCode;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        
+        IF ERROR_NUMBER() = 1205
+        BEGIN
+            SELECT N'Giao dịch T2 bị SQL Server chọn làm NẠN NHÂN DEADLOCK (Victim - Error 1205) và tự động Rollback!' AS ThongBao, 0 AS IsSuccess, 1205 AS ErrorCode;
+        END
+        ELSE
+        BEGIN
+            SELECT N'Lỗi T2: ' + ERROR_MESSAGE() AS ThongBao, 0 AS IsSuccess, ERROR_NUMBER() AS ErrorCode;
+        END
+    END CATCH
 END
 GO
 
