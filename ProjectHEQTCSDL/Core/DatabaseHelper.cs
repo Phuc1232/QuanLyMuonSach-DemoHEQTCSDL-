@@ -85,6 +85,50 @@ namespace ProjectHEQTCSDL.Core
             return ExecuteQuery(spName, parameters, CommandType.StoredProcedure);
         }
 
+        public static async Task<DataTable> ExecuteQueryAsync(string query, SqlParameter[]? parameters = null, CommandType commandType = CommandType.Text)
+        {
+            var dt = new DataTable();
+            using var conn = GetConnection();
+            await conn.OpenAsync();
+            using var cmd = new SqlCommand(query, conn)
+            {
+                CommandType = commandType,
+                CommandTimeout = 60
+            };
+
+            if (parameters != null && parameters.Length > 0)
+            {
+                cmd.Parameters.AddRange(parameters);
+            }
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            dt.Load(reader);
+            return dt;
+        }
+
+        public static async Task<int> ExecuteNonQueryAsync(string query, SqlParameter[]? parameters = null, CommandType commandType = CommandType.Text)
+        {
+            using var conn = GetConnection();
+            await conn.OpenAsync();
+            using var cmd = new SqlCommand(query, conn)
+            {
+                CommandType = commandType,
+                CommandTimeout = 60
+            };
+
+            if (parameters != null && parameters.Length > 0)
+            {
+                cmd.Parameters.AddRange(parameters);
+            }
+
+            return await cmd.ExecuteNonQueryAsync();
+        }
+
+        public static async Task<DataTable> ExecuteProcedureAsync(string spName, SqlParameter[]? parameters = null)
+        {
+            return await ExecuteQueryAsync(spName, parameters, CommandType.StoredProcedure);
+        }
+
         public static SqlParameter CreateStructuredParameter(string paramName, string typeName, DataTable data)
         {
             return new SqlParameter(paramName, SqlDbType.Structured)

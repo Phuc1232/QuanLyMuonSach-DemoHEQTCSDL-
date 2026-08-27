@@ -26,7 +26,7 @@ namespace ProjectHEQTCSDL.FormUI
         private void InitializeComponent()
         {
             this.Text = "Đăng Nhập - Hệ Thống Quản Lý Mượn Sách";
-            this.Size = new Size(520, 470);
+            this.Size = new Size(520, 530);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -71,7 +71,7 @@ namespace ProjectHEQTCSDL.FormUI
             var pnlBody = new Panel
             {
                 Location = new Point(35, 120),
-                Size = new Size(435, 290),
+                Size = new Size(435, 345),
                 BackColor = Color.White,
                 Padding = new Padding(20)
             };
@@ -156,7 +156,7 @@ namespace ProjectHEQTCSDL.FormUI
             btnLogin = new Button
             {
                 Text = "ĐĂNG NHẬP",
-                Location = new Point(20, 225),
+                Location = new Point(20, 220),
                 Size = new Size(250, 42),
                 BackColor = Color.FromArgb(37, 99, 235), // Royal Blue
                 ForeColor = Color.White,
@@ -171,7 +171,7 @@ namespace ProjectHEQTCSDL.FormUI
             btnExit = new Button
             {
                 Text = "Thoát",
-                Location = new Point(280, 225),
+                Location = new Point(280, 220),
                 Size = new Size(135, 42),
                 BackColor = Color.FromArgb(241, 245, 249),
                 ForeColor = Color.FromArgb(71, 85, 105),
@@ -182,6 +182,25 @@ namespace ProjectHEQTCSDL.FormUI
             btnExit.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
             btnExit.Click += (s, e) => Application.Exit();
 
+            // Concurrency Demo Entry Button
+            var btnDemoTuongTranh = new Button
+            {
+                Text = "⚡ CHẾ ĐỘ DEMO TƯƠNG TRANH (HQTCSDL)",
+                Location = new Point(20, 275),
+                Size = new Size(395, 42),
+                BackColor = Color.FromArgb(124, 58, 237), // Vibrant Purple
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            btnDemoTuongTranh.FlatAppearance.BorderSize = 0;
+            btnDemoTuongTranh.Click += (s, e) =>
+            {
+                var frmDemo = new FrmConcurrencyDemo();
+                frmDemo.Show();
+            };
+
             pnlBody.Controls.Add(lblServerInfo);
             pnlBody.Controls.Add(btnConfigServer);
             pnlBody.Controls.Add(lblUser);
@@ -191,6 +210,7 @@ namespace ProjectHEQTCSDL.FormUI
             pnlBody.Controls.Add(chkShowPassword);
             pnlBody.Controls.Add(btnLogin);
             pnlBody.Controls.Add(btnExit);
+            pnlBody.Controls.Add(btnDemoTuongTranh);
 
             this.Controls.Add(pnlBody);
             this.AcceptButton = btnLogin;
