@@ -57,6 +57,8 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
         
+        WAITFOR DELAY '00:00:05';
+
         UPDATE CuonSach
         SET TinhTrang = @p_TinhTrang
         WHERE MaCuonSach = @p_MaCuonSach;
@@ -70,7 +72,34 @@ BEGIN
     END CATCH
 END
 GO
+-- GIAI PHAP CHO KICH BAN1:
+CREATE OR ALTER PROCEDURE sp_CapNhatTinhTrangCuonSach
+    @p_MaCuonSach  VARCHAR(10),
+    @p_TinhTrang   NVARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        DECLARE @tmp NVARCHAR(100);
+        SELECT @tmp = TinhTrang 
+        FROM CuonSach WITH (UPDLOCK,HOLDLOCK)  
+        WHERE MaCuonSach = @p_MaCuonSach;
 
+        WAITFOR DELAY '00:00:05';
+        UPDATE CuonSach
+        SET TinhTrang = @p_TinhTrang
+        WHERE MaCuonSach = @p_MaCuonSach;
+
+        COMMIT TRANSACTION;
+        SELECT N'Cập nhật tình trạng sách thành công!' AS ThongBao;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
 
 -- =========================================================================
 -- 2. KỊCH BẢN 2: DIRTY DATA / DIRTY READ (ĐỌC DỮ LIỆU RÁC)
@@ -133,7 +162,26 @@ BEGIN
 END
 GO
 
+-- GIAIPHAP CHO KICHBAN2
+CREATE OR ALTER PROCEDURE sp_TraCuuSach_DirtyRead
+    @p_MaCuonSach VARCHAR(10)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    -- Thiết lập mức cô lập cho phép đọc dữ liệu chưa commit
+    SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
+    SELECT 
+        c.MaCuonSach, 
+        s.TenSach, 
+        c.TrangThai, 
+        c.TinhTrang,
+        c.ViTriKe
+    FROM CuonSach c
+    JOIN Sach s ON c.MaSach = s.MaSach
+    WHERE c.MaCuonSach = @p_MaCuonSach;
+END
+GO
 -- =========================================================================
 -- 3. KỊCH BẢN 3: NON-REPEATABLE READ (ĐỌC KHÔNG NHẤT QUÁN / ĐỌC KHÔNG LẶP LẠI)
 -- =========================================================================
@@ -182,6 +230,50 @@ BEGIN
 END
 GO
 
+--GIAI PHAP CHO KICHBAN3
+CREATE OR ALTER PROCEDURE sp_BaoCaoKiemKeKho
+    @p_MaSach VARCHAR(10)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; 
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Lần đọc 1: Đếm số cuốn sách đang có sẵn
+        DECLARE @v_Lan1 INT;
+        SELECT @v_Lan1 = COUNT(*) 
+        FROM CuonSach 
+        WHERE MaSach = @p_MaSach AND TrangThai = 'CoSan';
+
+        -- Giữ giao tác kiểm kê trong 10 giây (trong thời gian này Thủ thư ở quầy khác cho mượn 1 cuốn)
+        WAITFOR DELAY '00:00:10';
+
+        -- Lần đọc 2: Đếm lại trong cùng một Transaction
+        DECLARE @v_Lan2 INT;
+        SELECT @v_Lan2 = COUNT(*) 
+        FROM CuonSach 
+        WHERE MaSach = @p_MaSach AND TrangThai = 'CoSan';
+
+        COMMIT TRANSACTION;
+
+        -- Trả về bảng kết quả so sánh
+        SELECT 
+            @p_MaSach AS [MaSach],
+            @v_Lan1 AS [SoLuong_DocLan1],
+            @v_Lan2 AS [SoLuong_DocLan2],
+            CASE 
+                WHEN @v_Lan1 <> @v_Lan2 THEN N'Phát hiện lỗi Non-Repeatable Read (Số lượng thay đổi giữa 2 lần đọc trong cùng 1 giao dịch!)'
+                ELSE N'Dữ liệu nhất quán (Số lượng không đổi)'
+            END AS [KetQuaPhanTich];
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
 
 -- =========================================================================
 -- 4. KỊCH BẢN 4: PHANTOM READ (ĐỌC BÓNG MA)
@@ -254,7 +346,43 @@ BEGIN
 END
 GO
 
+-- GIAI PHAP CHO KICHBAN 4
+CREATE OR ALTER PROCEDURE sp_BaoCaoTongHopPhieuPhat
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- Lần đếm 1: Tổng số phiếu phạt hiện tại
+        DECLARE @v_Count1 INT;
+        SELECT @v_Count1 = COUNT(*) FROM PhieuPhat;
+
+        -- Chờ 10 giây xuất báo cáo (trong thời gian này có phiếu phạt mới được chèn)
+        WAITFOR DELAY '00:00:10';
+
+        -- Lần đếm 2: Đếm lại trong cùng một Transaction
+        DECLARE @v_Count2 INT;
+        SELECT @v_Count2 = COUNT(*) FROM PhieuPhat;
+
+        COMMIT TRANSACTION;
+
+        SELECT 
+            @v_Count1 AS [TongPhieu_Lan1],
+            @v_Count2 AS [TongPhieu_Lan2],
+            CASE 
+                WHEN @v_Count2 > @v_Count1 THEN N'Phát hiện dòng bóng ma (Phantom Read) do có bản ghi mới chèn vào dải dữ liệu!'
+                ELSE N'Số lượng bản ghi không đổi'
+            END AS [KetQuaPhanTich];
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
 -- =========================================================================
 -- 5. KỊCH BẢN 5: DEADLOCK (BẾ TẮC TƯƠNG HỖ - CROSS DEPENDENCY)
 -- =========================================================================

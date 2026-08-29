@@ -453,6 +453,7 @@ namespace ProjectHEQTCSDL.FormUI
             // Position side by side on screen
             var screenArea = Screen.FromControl(this).WorkingArea;
             int winWidth = (screenArea.Width / 2) - 15;
+            
             int winHeight = screenArea.Height - 40;
 
             win1.StartPosition = FormStartPosition.Manual;

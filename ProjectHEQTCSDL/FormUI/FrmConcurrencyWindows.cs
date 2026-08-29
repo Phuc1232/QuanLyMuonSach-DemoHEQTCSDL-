@@ -131,7 +131,7 @@ namespace ProjectHEQTCSDL.FormUI
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(220, 38, 38),
                 Location = new Point(50, 72),
-                Size = new Size(480, 18),
+                AutoSize = true,
                 Visible = false
             };
 
@@ -214,7 +214,7 @@ namespace ProjectHEQTCSDL.FormUI
             prgTimer.Value = totalSeconds * 10;
             prgTimer.Visible = true;
             lblTimerStatus.Visible = true;
-            lblTimerStatus.Text = $"⏳ {actionDescription} (Đang mở giao tác CSDL: còn {remainingSeconds}s)...";
+            lblTimerStatus.Text = $"⏳ [Còn {remainingSeconds}s] {actionDescription}...";
 
             SetAlert("Đang Xử Lý Giao Dịch CSDL", $"Hệ thống đang mở phiên làm việc ({totalSeconds} giây) trên SQL Server...", AlertType.Warning);
 
@@ -232,7 +232,7 @@ namespace ProjectHEQTCSDL.FormUI
                     if (ticksLeft % 10 == 0)
                     {
                         remainingSeconds = ticksLeft / 10;
-                        lblTimerStatus.Text = $"⏳ {actionDescription} (Đang mở giao tác CSDL: còn {remainingSeconds}s)...";
+                        lblTimerStatus.Text = $"⏳ [Còn {remainingSeconds}s] {actionDescription}...";
                     }
                 }
                 else
@@ -389,7 +389,7 @@ namespace ProjectHEQTCSDL.FormUI
         {
             try
             {
-                var dt = DatabaseHelper.ExecuteQuery("SELECT MaCuonSach, TinhTrang, TrangThai FROM CuonSach WHERE MaCuonSach = 'CS001'");
+                var dt = DatabaseHelper.ExecuteQuery("SELECT MaCuonSach, TinhTrang, TrangThai FROM CuonSach WITH (NOLOCK) WHERE MaCuonSach = 'CS001'");
                 if (dt.Rows.Count > 0)
                 {
                     string tt = dt.Rows[0]["TinhTrang"].ToString() ?? "";
@@ -408,6 +408,9 @@ namespace ProjectHEQTCSDL.FormUI
             btnSave.Enabled = false;
             string newStatus = cboTinhTrang.SelectedItem?.ToString() ?? "Rách bìa ngoài";
 
+            StartCountdown(10, "Đang gửi giao tác cập nhật CS001");
+            SetAlert("Đang Thực Hiện Giao Tác", $"[{DateTime.Now:HH:mm:ss}] Thủ thư A đang gửi cập nhật '{newStatus}' vào CSDL...", AlertType.Warning);
+
             try
             {
                 var pars = new SqlParameter[]
@@ -417,17 +420,24 @@ namespace ProjectHEQTCSDL.FormUI
                 };
 
                 var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_CapNhatTinhTrangCuonSach", pars);
-                string msg = dt.Rows.Count > 0 ? (dt.Rows[0]["ThongBao"]?.ToString() ?? "Cập nhật thành công!") : "Cập nhật thành công!";
+                StopCountdown();
+                string msg = "Cập nhật thành công!";
+                if (dt.Rows.Count > 0)
+                {
+                    if (dt.Columns.Contains("ThongBao"))
+                        msg = dt.Rows[0]["ThongBao"]?.ToString() ?? msg;
+                    else if (dt.Columns.Count > 0)
+                        msg = dt.Rows[0][0]?.ToString() ?? msg;
+                }
                 
                 LoadCurrentBookStatus();
-                SetAlert("Cập Nhật Thành Công", $"Đã lưu tình trạng '{newStatus}' cho cuốn sách CS001 vào CSDL.", AlertType.Success);
-                MessageBox.Show($"Thủ thư A đã cập nhật tình trạng cuốn sách CS001 thành '{newStatus}' thành công!", "Thông Báo Nghiệp Vụ", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                SetAlert("Cập Nhật Thành Công", $"[{DateTime.Now:HH:mm:ss}] Thủ thư A ĐÃ LƯU THÀNH CÔNG: '{newStatus}' vào CSDL.", AlertType.Success);
                 OnDataChanged?.Invoke();
             }
             catch (Exception ex)
             {
-                SetAlert("Lỗi Cập Nhật", ex.Message, AlertType.Danger);
-                MessageBox.Show("Có lỗi khi cập nhật tình trạng sách:\n" + ex.Message, "Lỗi Nghiệp Vụ", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                StopCountdown();
+                SetAlert("Lỗi Cập Nhật", $"[{DateTime.Now:HH:mm:ss}] Lỗi: {ex.Message}", AlertType.Danger);
             }
             finally
             {
@@ -559,7 +569,7 @@ namespace ProjectHEQTCSDL.FormUI
         {
             try
             {
-                var dt = DatabaseHelper.ExecuteQuery("SELECT MaCuonSach, TinhTrang, TrangThai FROM CuonSach WHERE MaCuonSach = 'CS001'");
+                var dt = DatabaseHelper.ExecuteQuery("SELECT MaCuonSach, TinhTrang, TrangThai FROM CuonSach WITH (NOLOCK) WHERE MaCuonSach = 'CS001'");
                 if (dt.Rows.Count > 0)
                 {
                     string tt = dt.Rows[0]["TinhTrang"].ToString() ?? "";
@@ -578,6 +588,9 @@ namespace ProjectHEQTCSDL.FormUI
             btnSave.Enabled = false;
             string newStatus = cboTinhTrang.SelectedItem?.ToString() ?? "Mất đĩa CD kèm theo";
 
+            StartCountdown(10, "Đang gửi giao tác cập nhật CS001");
+            SetAlert("Đang Thực Hiện Giao Tác", $"[{DateTime.Now:HH:mm:ss}] Thủ thư B đang gửi cập nhật '{newStatus}' vào CSDL...", AlertType.Warning);
+
             try
             {
                 var pars = new SqlParameter[]
@@ -587,17 +600,24 @@ namespace ProjectHEQTCSDL.FormUI
                 };
 
                 var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_CapNhatTinhTrangCuonSach", pars);
-                string msg = dt.Rows.Count > 0 ? (dt.Rows[0]["ThongBao"]?.ToString() ?? "Cập nhật thành công!") : "Cập nhật thành công!";
+                StopCountdown();
+                string msg = "Cập nhật thành công!";
+                if (dt.Rows.Count > 0)
+                {
+                    if (dt.Columns.Contains("ThongBao"))
+                        msg = dt.Rows[0]["ThongBao"]?.ToString() ?? msg;
+                    else if (dt.Columns.Count > 0)
+                        msg = dt.Rows[0][0]?.ToString() ?? msg;
+                }
                 
                 LoadCurrentBookStatus();
-                SetAlert("Cập Nhật Thành Công", $"Đã lưu tình trạng '{newStatus}' cho cuốn sách CS001 vào CSDL.", AlertType.Success);
-                MessageBox.Show($"Thủ thư B đã cập nhật tình trạng cuốn sách CS001 thành '{newStatus}' thành công!", "Thông Báo Nghiệp Vụ", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                SetAlert("Cập Nhật Thành Công", $"[{DateTime.Now:HH:mm:ss}] Thủ thư B ĐÃ LƯU THÀNH CÔNG: '{newStatus}' vào CSDL.", AlertType.Success);
                 OnDataChanged?.Invoke();
             }
             catch (Exception ex)
             {
-                SetAlert("Lỗi Cập Nhật", ex.Message, AlertType.Danger);
-                MessageBox.Show("Có lỗi khi cập nhật tình trạng sách:\n" + ex.Message, "Lỗi Nghiệp Vụ", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                StopCountdown();
+                SetAlert("Lỗi Cập Nhật", $"[{DateTime.Now:HH:mm:ss}] Lỗi: {ex.Message}", AlertType.Danger);
             }
             finally
             {
