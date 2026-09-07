@@ -286,27 +286,20 @@ namespace ProjectHEQTCSDL.FormUI
 
             try
             {
-                string sql = @"
-                    SELECT v.MaTaiKhoan, v.TenDangNhap, v.MaRole, v.TenRole, v.TrangThai,
-                           dg.MaDG, dg.HoTen AS TenDocGia,
-                           nv.MaNV, nv.HoTen AS TenNhanVien
-                    FROM View_TaiKhoan_Role v
-                    JOIN TaiKhoan tk ON v.MaTaiKhoan = tk.MaTaiKhoan
-                    LEFT JOIN DocGia dg ON v.MaTaiKhoan = dg.MaTaiKhoan
-                    LEFT JOIN NhanVien nv ON v.MaTaiKhoan = nv.MaTaiKhoan
-                    WHERE v.TenDangNhap = @user AND tk.MatKhau = @pass;";
-
                 var pars = new SqlParameter[]
                 {
-                    new SqlParameter("@user", username),
-                    new SqlParameter("@pass", password)
+                    new SqlParameter("@p_TenDangNhap", username),
+                    new SqlParameter("@p_MatKhau", password)
                 };
 
-                DataTable dt = DatabaseHelper.ExecuteQuery(sql, pars);
+                DataTable dt = DatabaseHelper.ExecuteProcedure("sp_XacThucDangNhap", pars);
 
-                if (dt.Rows.Count == 0)
+                if (dt.Rows.Count == 0 || (dt.Columns.Contains("KetQua") && Convert.ToInt32(dt.Rows[0]["KetQua"]) == 0))
                 {
-                    MessageBox.Show("Tên đăng nhập hoặc mật khẩu không chính xác!", "Đăng nhập thất bại", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    string msg = dt.Rows.Count > 0 && dt.Columns.Contains("ThongBao") 
+                        ? dt.Rows[0]["ThongBao"].ToString() ?? "Tên đăng nhập hoặc mật khẩu không chính xác!"
+                        : "Tên đăng nhập hoặc mật khẩu không chính xác!";
+                    MessageBox.Show(msg, "Đăng nhập thất bại", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 

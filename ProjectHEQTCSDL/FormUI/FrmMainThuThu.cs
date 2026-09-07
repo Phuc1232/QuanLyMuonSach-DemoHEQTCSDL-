@@ -747,11 +747,7 @@ namespace ProjectHEQTCSDL.FormUI
             string maNV = !string.IsNullOrEmpty(SessionContext.MaNV) ? SessionContext.MaNV : "NV001";
             try
             {
-                string sql = @"
-                    SELECT nv.MaNV, nv.HoTen, nv.ChucVu, nv.SDT, nv.Email, v.TenDangNhap
-                    FROM NhanVien nv
-                    JOIN View_TaiKhoan_Role v ON nv.MaTaiKhoan = v.MaTaiKhoan
-                    WHERE nv.MaNV = @id;";
+                string sql = "SELECT * FROM View_ThongTinNhanVien_ChiTiet WHERE MaNV = @id;";
                 DataTable dt = DatabaseHelper.ExecuteQuery(sql, new SqlParameter[] { new SqlParameter("@id", maNV) });
                 if (dt.Rows.Count > 0)
                 {
@@ -882,11 +878,7 @@ namespace ProjectHEQTCSDL.FormUI
         {
             try
             {
-                string sql = @"
-                    SELECT DISTINCT v.MaCuonSach, v.DisplayText
-                    FROM View_SachCoSan v
-                    JOIN PhieuDatTruoc pdt ON v.MaSach = pdt.MaSach
-                    WHERE v.TrangThai = 'CoSan' AND v.TinhTrang = 'ConTot' AND pdt.TrangThai = 'DangCho';";
+                string sql = "SELECT MaCuonSach, DisplayText FROM View_CuonSachTraVeChoDatTruoc;";
                 DataTable dt = DatabaseHelper.ExecuteQuery(sql);
                 cboCuonSachTraVe.DataSource = dt;
                 cboCuonSachTraVe.DisplayMember = "DisplayText";
@@ -920,24 +912,18 @@ namespace ProjectHEQTCSDL.FormUI
                 return;
             }
 
-            // Check if reader is already borrowing this book title
+            // Check if reader is already borrowing this book title via UDF fn_KiemTraDocGiaDangGiuDauSach
             string maDG = cboDocGia.SelectedValue?.ToString() ?? "";
             if (!string.IsNullOrEmpty(maDG))
             {
-                string checkSql = @"
-                    SELECT COUNT(*)
-                    FROM CT_PhieuMuon ct
-                    JOIN PhieuMuon pm ON ct.MaPhieuMuon = pm.MaPhieuMuon
-                    JOIN CuonSach cs ON ct.MaCuonSach = cs.MaCuonSach
-                    WHERE pm.MaDG = @MaDG AND cs.MaSach = @MaSach AND ct.TinhTrangSachKhiTra = 'ChuaTra'";
-                
+                string checkSql = "SELECT dbo.fn_KiemTraDocGiaDangGiuDauSach(@MaDG, @MaSach);";
                 var pars = new[] {
                     new SqlParameter("@MaDG", maDG),
                     new SqlParameter("@MaSach", maSach)
                 };
                 
-                int countDangMuon = Convert.ToInt32(DatabaseHelper.ExecuteScalar(checkSql, pars) ?? 0);
-                if (countDangMuon > 0)
+                bool isHolding = Convert.ToBoolean(DatabaseHelper.ExecuteScalar(checkSql, pars) ?? false);
+                if (isHolding)
                 {
                     MessageBox.Show("Độc giả này đang giữ 1 cuốn thuộc đầu sách này rồi, không được mượn thêm bản sao khác!", "Cảnh báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
@@ -1040,13 +1026,7 @@ namespace ProjectHEQTCSDL.FormUI
         {
             try
             {
-                string sql = @"
-                    SELECT pm.MaPhieuMuon, dg.MaDG, dg.HoTen AS TenDocGia, pm.NgayMuon, pm.NgayHenTra, pm.TrangThai,
-                           dbo.fn_TinhSoNgayTre(pm.MaPhieuMuon) AS SoNgayTre
-                    FROM PhieuMuon pm
-                    JOIN DocGia dg ON pm.MaDG = dg.MaDG
-                    WHERE pm.TrangThai IN ('DangMuon', 'QuaHan')
-                    ORDER BY pm.NgayHenTra ASC;";
+                string sql = "SELECT * FROM View_DanhSachPhieuMuonHienHanh ORDER BY NgayHenTra ASC;";
                 dgvPhieuMuonDangMuon.DataSource = DatabaseHelper.ExecuteQuery(sql);
             }
             catch { }
@@ -1234,18 +1214,10 @@ namespace ProjectHEQTCSDL.FormUI
             string maSach = dgvDatTruoc.CurrentRow.Cells["MaSach"].Value?.ToString() ?? "";
             try
             {
-                var obj = DatabaseHelper.ExecuteScalar("SELECT TOP 1 MaCuonSach FROM CuonSach WHERE MaSach = @ms AND TrangThai = 'GiuCho'", new SqlParameter[] { new SqlParameter("@ms", maSach) });
-                if (obj == null)
-                {
-                    MessageBox.Show("Không tìm thấy cuốn sách vật lý nào đang được Giữ chỗ cho đầu sách này!", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-                string maCuonSach = obj.ToString() ?? "";
-                
                 var pars = new SqlParameter[]
                 {
                     new SqlParameter("@p_MaPhieuDatTruoc", maPDT),
-                    new SqlParameter("@p_MaCuonSach", maCuonSach),
+                    new SqlParameter("@p_MaCuonSach", DBNull.Value),
                     new SqlParameter("@p_MaPhieuMuon", maPM),
                     new SqlParameter("@p_MaNV", maNV),
                     new SqlParameter("@p_NgayHenTra", ngayHenTra)
@@ -1280,17 +1252,10 @@ namespace ProjectHEQTCSDL.FormUI
             
             try
             {
-                var obj = DatabaseHelper.ExecuteScalar("SELECT TOP 1 MaCuonSach FROM CuonSach WHERE MaSach = @ms AND TrangThai = 'GiuCho'", new SqlParameter[] { new SqlParameter("@ms", maSach) });
-                string maCuonSach = obj?.ToString() ?? "";
-                if (string.IsNullOrEmpty(maCuonSach))
-                {
-                    MessageBox.Show("Lỗi: Không tìm thấy sách vật lý đang giữ chỗ để hủy!", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
                 var pars = new SqlParameter[]
                 {
                     new SqlParameter("@p_MaPhieuDatTruoc", maPDT),
-                    new SqlParameter("@p_MaCuonSach", maCuonSach)
+                    new SqlParameter("@p_MaCuonSach", DBNull.Value)
                 };
                 DataTable dt = DatabaseHelper.ExecuteProcedure("sp_HuyGiuChoHetHan", pars);
                 string msg = dt.Rows.Count > 0 && dt.Columns.Contains("ThongBao") ? dt.Rows[0]["ThongBao"].ToString() ?? "" : "Hủy thành công!";
@@ -1320,12 +1285,9 @@ namespace ProjectHEQTCSDL.FormUI
             try
             {
                 string sql = @"
-                    SELECT pp.MaPhieuPhat, pp.MaPhieuMuon, dg.MaDG, dg.HoTen AS TenDocGia,
-                           pp.LyDoPhat, pp.SoTienPhat, pp.NgayLap, pp.TrangThaiThanhToan
-                    FROM PhieuPhat pp
-                    JOIN PhieuMuon pm ON pp.MaPhieuMuon = pm.MaPhieuMuon
-                    JOIN DocGia dg ON pm.MaDG = dg.MaDG
-                    ORDER BY CASE WHEN pp.TrangThaiThanhToan = 'ChuaThanhToan' THEN 0 ELSE 1 END, pp.NgayLap DESC;";
+                    SELECT * 
+                    FROM View_DanhSachPhieuPhat_ChiTiet
+                    ORDER BY CASE WHEN TrangThaiThanhToan = 'ChuaThanhToan' THEN 0 ELSE 1 END, NgayLap DESC;";
                 dgvPhieuPhat.DataSource = DatabaseHelper.ExecuteQuery(sql);
             }
             catch { }

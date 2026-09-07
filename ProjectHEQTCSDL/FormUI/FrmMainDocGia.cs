@@ -447,7 +447,7 @@ namespace ProjectHEQTCSDL.FormUI
 
             try
             {
-                string sql = "SELECT MaCuonSach, TinhTrang, TrangThai, ViTriKe FROM CuonSach WHERE MaSach = @id";
+                string sql = "SELECT * FROM dbo.fn_TraCuuViTriSach(@id);";
                 DataTable dt = DatabaseHelper.ExecuteQuery(sql, new SqlParameter[] { new SqlParameter("@id", maSach) });
 
                 string info = $"📍 VỊ TRÍ CÁC CUỐN SÁCH [{maSach}] {tenSach}:\n\n";
@@ -756,12 +756,7 @@ namespace ProjectHEQTCSDL.FormUI
             string maDG = !string.IsNullOrEmpty(SessionContext.MaDG) ? SessionContext.MaDG : "DG001";
             try
             {
-                string sql = @"
-                    SELECT dg.MaDG, dg.HoTen, dg.NgaySinh, dg.DiaChi, dg.SDT, dg.Email,
-                           dg.LoaiDocGia, dg.NgayDangKy, dg.TrangThai, tk.TenDangNhap
-                    FROM DocGia dg
-                    JOIN TaiKhoan tk ON dg.MaTaiKhoan = tk.MaTaiKhoan
-                    WHERE dg.MaDG = @id;";
+                string sql = "SELECT * FROM View_ThongTinDocGia_ChiTiet WHERE MaDG = @id;";
                 DataTable dt = DatabaseHelper.ExecuteQuery(sql, new SqlParameter[] { new SqlParameter("@id", maDG) });
                 if (dt.Rows.Count > 0)
                 {
@@ -941,7 +936,7 @@ namespace ProjectHEQTCSDL.FormUI
             string maDG = !string.IsNullOrEmpty(SessionContext.MaDG) ? SessionContext.MaDG : "DG001";
             try
             {
-                string sql = "SELECT COUNT(*) FROM PhieuDatTruoc WHERE MaDG = @id AND TrangThai = 'ChoNhan'";
+                string sql = "SELECT dbo.fn_DemPhieuDatTruocChoNhan(@id);";
                 var count = Convert.ToInt32(DatabaseHelper.ExecuteScalar(sql, new SqlParameter[] { new SqlParameter("@id", maDG) }));
                 if (count > 0)
                 {
@@ -978,11 +973,10 @@ namespace ProjectHEQTCSDL.FormUI
             try
             {
                 string sql = @"
-                    SELECT pp.MaPhieuPhat, pp.MaPhieuMuon, pp.LyDoPhat, pp.SoTienPhat, pp.NgayLap, pp.TrangThaiThanhToan
-                    FROM PhieuPhat pp
-                    JOIN PhieuMuon pm ON pp.MaPhieuMuon = pm.MaPhieuMuon
-                    WHERE pm.MaDG = @id
-                    ORDER BY pp.NgayLap DESC;";
+                    SELECT MaPhieuPhat, MaPhieuMuon, LyDoPhat, SoTienPhat, NgayLap, TrangThaiThanhToan
+                    FROM View_LichSuPhat_DocGia
+                    WHERE MaDG = @id
+                    ORDER BY NgayLap DESC;";
                 DataTable dt = DatabaseHelper.ExecuteQuery(sql, new SqlParameter[] { new SqlParameter("@id", maDG) });
                 dgvLichSuPhat.DataSource = dt;
 

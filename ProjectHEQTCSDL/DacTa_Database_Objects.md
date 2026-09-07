@@ -987,10 +987,43 @@ Các Stored Procedures phục vụ module demo Interactive GUI cho 4 kịch bả
 *   **Tên SP 2 (Thủ thư Cho Mượn):** `sp_Demo_NonRepeatableRead_ChoMuon`
     *   **Mục đích:** Cập nhật cuốn sách sang trạng thái `DangMuon` để xen vào giữa giao dịch đếm lần 1 và lần 2 của Quản lý, làm thay đổi tập kết quả.
 
-### 7.4. Kịch bản 4: Đọc Bóng ma (Phantom Read)
-*   **Mục đích:** Mô phỏng hiện tượng Phantom Read khi mức cô lập REPEATABLE READ chỉ khóa cập nhật/xóa các dòng đã đọc, nhưng không chặn luồng khác chèn thêm dòng mới (INSERT) vào phạm vi dữ liệu đang truy vấn.
-*   **Cơ chế (Thực hiện trực tiếp trên Form):** 
-    *   **User 1 (Quản lý):** Thực thi `SELECT COUNT(*) FROM PhieuPhat` với `SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;` và giữ nguyên Transaction.
-    *   **User 2 (Hệ thống):** Gửi lệnh `INSERT INTO PhieuPhat (MaPhieuPhat, ...)` để chèn thêm phiếu phạt. Lệnh này không bị chặn.
-    *   Khi User 1 chạy lại lệnh SELECT COUNT(*), số lượng trả về sẽ lớn hơn lần 1 (xuất hiện dữ liệu Bóng ma).
+
+---
+
+## 8. CÁC DATABASE OBJECTS CHUẨN HÓA BỔ SUNG (TÁCH BIỆT ĐỘC LẬP T-SQL CỦA FORMUI)
+
+Nhằm đáp ứng 100% chuẩn mực môn Hệ Quản Trị Cơ Sở Dữ Liệu (nguyên tắc Độc lập dữ liệu và Đóng gói toàn vẹn giao tác ACID), toàn bộ các câu lệnh T-SQL phức tạp (nhiều JOIN, phân tích tổng hợp, DML trực tiếp) trong tầng giao diện FormUI đã được tách biệt độc lập sang các Database Objects sau:
+
+### 8.1. Khung Nhìn (Views)
+1. **`View_QuanLyTaiKhoan_Admin`**: Hợp nhất `View_TaiKhoan_Role`, `DocGia`, `NhanVien`, phục vụ quản trị người dùng trên `FrmMainAdmin`.
+2. **`View_QuanLyKhoSach_Admin`**: Hợp nhất `View_DanhSachDauSach` và `CuonSach`, tính toán số lượng bản sao, số bản có sẵn, số bản đang mượn (`COUNT`, `SUM(CASE WHEN...)`) trực tiếp tại CSDL cho `FrmMainAdmin`.
+3. **`View_DanhSachPhieuMuonHienHanh`**: Hợp nhất `PhieuMuon`, `DocGia`, gọi `dbo.fn_TinhSoNgayTre` trên Server, lọc các phiếu `DangMuon` và `QuaHan` cho `FrmMainThuThu`.
+4. **`View_DanhSachPhieuPhat_ChiTiet`**: Hợp nhất `PhieuPhat`, `PhieuMuon`, `DocGia` cho màn hình quản lý thu phạt của Thủ thư (`FrmMainThuThu`).
+5. **`View_LichSuPhat_DocGia`**: Cung cấp lịch sử nộp phạt kèm `MaDG` cho Độc giả (`FrmMainDocGia`).
+6. **`View_CuonSachTraVeChoDatTruoc`**: Hợp nhất `View_SachCoSan` và `PhieuDatTruoc` ở trạng thái chờ (`DangCho`) cho Thủ thư xử lý giữ chỗ.
+7. **`View_ThongTinDocGia_ChiTiet`**: Cung cấp hồ sơ cá nhân và tài khoản độc giả cho `FrmMainDocGia`.
+8. **`View_ThongTinNhanVien_ChiTiet`**: Cung cấp hồ sơ nhân sự cho `FrmMainThuThu`.
+
+### 8.2. Hàm Người Dùng (User-Defined Functions)
+1. **`fn_KiemTraDocGiaDangGiuDauSach(@p_MaDG, @p_MaSach) RETURNS BIT`**:
+   * Đóng gói logic JOIN 3 bảng (`CT_PhieuMuon`, `PhieuMuon`, `CuonSach`) để kiểm tra quy tắc: Độc giả không được mượn cùng lúc 2 cuốn thuộc cùng một đầu sách khi chưa trả.
+2. **`fn_TraCuuViTriSach(@p_MaSach) RETURNS TABLE`**:
+   * Inline Table-Valued Function trả về danh sách mã cuốn, tình trạng, trạng thái, vị trí kệ của một đầu sách.
+3. **`fn_DemPhieuDatTruocChoNhan(@p_MaDG) RETURNS INT`**:
+   * Đếm số lượng phiếu đặt trước đã sẵn sàng nhận sách của một độc giả.
+
+### 8.3. Stored Procedures & Giao Tác Nghiệp Vụ
+1. **`sp_XacThucDangNhap(@p_TenDangNhap, @p_MatKhau)`**:
+   * Đóng gói toàn bộ logic xác thực, lấy thông tin phân quyền và kiểm tra trạng thái khóa/tạm khóa. Thay thế truy vấn JOIN 4 bảng inline trong `FrmLogin`.
+2. **`sp_DoiTrangThaiTaiKhoan(@p_MaTaiKhoan, @p_TrangThaiMoi)`**:
+   * Giao tác cập nhật trạng thái tài khoản an toàn với `BEGIN TRAN...COMMIT` và kiểm tra tồn tại.
+3. **`sp_DatLaiMatKhau(@p_MaTaiKhoan, @p_MatKhauMacDinh)`**:
+   * Giao tác đặt lại mật khẩu về mặc định cho Quản trị viên.
+4. **`sp_XoaDauSach(@p_MaSach)`**:
+   * Giao tác xóa an toàn: Kiểm tra ràng buộc sách đang mượn, phiếu đặt trước đang chờ trước khi xóa khỏi hệ thống.
+5. **Cải tiến `sp_NhanSachDatTruoc` & `sp_HuyGiuChoHetHan`**:
+   * Chuyển logic `SELECT TOP 1 MaCuonSach ... WHERE TrangThai = 'GiuCho'` với gợi ý khóa `WITH (UPDLOCK, ROWLOCK)` vào bên trong Transaction của Stored Procedure, triệt tiêu hoàn toàn lỗ hổng tương tranh (Race Condition) khi Client gọi.
+6. **`sp_Demo_NonRepeatableRead_ChoMuon`**:
+   * Đóng gói lệnh cập nhật trạng thái sách trong kịch bản demo Non-Repeatable Read.
+
 

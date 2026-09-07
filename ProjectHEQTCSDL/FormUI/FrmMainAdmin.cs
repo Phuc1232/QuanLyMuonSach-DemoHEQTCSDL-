@@ -461,14 +461,7 @@ namespace ProjectHEQTCSDL.FormUI
         {
             try
             {
-                string sql = @"
-                    SELECT v.MaTaiKhoan, v.TenDangNhap, v.TenRole, v.TrangThai, v.NgayTao,
-                           ISNULL(dg.HoTen, nv.HoTen) AS HoTenNguoiDung,
-                           ISNULL(dg.SDT, nv.SDT) AS SDT
-                    FROM View_TaiKhoan_Role v
-                    LEFT JOIN DocGia dg ON v.MaTaiKhoan = dg.MaTaiKhoan
-                    LEFT JOIN NhanVien nv ON v.MaTaiKhoan = nv.MaTaiKhoan;";
-                dgvTaiKhoan.DataSource = DatabaseHelper.ExecuteQuery(sql);
+                dgvTaiKhoan.DataSource = DatabaseHelper.ExecuteQuery("SELECT * FROM View_QuanLyTaiKhoan_Admin");
                 
                 if (dgvTaiKhoan.Columns.Contains("MaTaiKhoan")) dgvTaiKhoan.Columns["MaTaiKhoan"].HeaderText = "Mã TK";
                 if (dgvTaiKhoan.Columns.Contains("TenDangNhap")) dgvTaiKhoan.Columns["TenDangNhap"].HeaderText = "Tên Đăng Nhập";
@@ -484,15 +477,7 @@ namespace ProjectHEQTCSDL.FormUI
         {
             try
             {
-                string sql = @"
-                    SELECT v.MaSach, v.TenSach, v.TenNXB, v.TenTheLoai, v.NamXB,
-                           COUNT(cs.MaCuonSach) AS TongCuon,
-                           SUM(CASE WHEN cs.TrangThai = 'CoSan' THEN 1 ELSE 0 END) AS CoSan,
-                           SUM(CASE WHEN cs.TrangThai = 'DangMuon' THEN 1 ELSE 0 END) AS DangMuon
-                    FROM View_DanhSachDauSach v
-                    LEFT JOIN CuonSach cs ON v.MaSach = cs.MaSach
-                    GROUP BY v.MaSach, v.TenSach, v.TenNXB, v.TenTheLoai, v.NamXB;";
-                dgvSach.DataSource = DatabaseHelper.ExecuteQuery(sql);
+                dgvSach.DataSource = DatabaseHelper.ExecuteQuery("SELECT * FROM View_QuanLyKhoSach_Admin");
 
                 if (dgvSach.Columns.Contains("MaSach")) dgvSach.Columns["MaSach"].HeaderText = "Mã Sách";
                 if (dgvSach.Columns.Contains("TenSach")) dgvSach.Columns["TenSach"].HeaderText = "Tên Sách";
@@ -521,15 +506,20 @@ namespace ProjectHEQTCSDL.FormUI
             {
                 var pars = new SqlParameter[]
                 {
-                    new SqlParameter("@status", newStatus),
-                    new SqlParameter("@id", maTK)
+                    new SqlParameter("@p_MaTaiKhoan", maTK),
+                    new SqlParameter("@p_TrangThaiMoi", newStatus)
                 };
-                int rows = DatabaseHelper.ExecuteNonQuery("UPDATE TaiKhoan SET TrangThai = @status WHERE MaTaiKhoan = @id", pars);
+                DataTable dt = DatabaseHelper.ExecuteProcedure("sp_DoiTrangThaiTaiKhoan", pars);
 
-                if (rows > 0)
+                if (dt.Rows.Count > 0 && Convert.ToInt32(dt.Rows[0]["KetQua"]) == 1)
                 {
-                    MessageBox.Show($"Đã cập nhật trạng thái tài khoản '{maTK}' thành '{newStatus}'!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(dt.Rows[0]["ThongBao"].ToString() ?? $"Đã cập nhật trạng thái tài khoản '{maTK}' thành '{newStatus}'!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     LoadTaiKhoan();
+                }
+                else
+                {
+                    string msg = dt.Rows.Count > 0 ? dt.Rows[0]["ThongBao"].ToString() ?? "Lỗi cập nhật" : "Lỗi cập nhật";
+                    MessageBox.Show(msg, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
             catch (Exception ex)
@@ -548,8 +538,18 @@ namespace ProjectHEQTCSDL.FormUI
             {
                 try
                 {
-                    DatabaseHelper.ExecuteNonQuery("UPDATE TaiKhoan SET MatKhau = '123456' WHERE MaTaiKhoan = @id", new SqlParameter[] { new SqlParameter("@id", maTK) });
-                    MessageBox.Show("Đã reset mật khẩu thành công về '123456'!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    var pars = new SqlParameter[] { new SqlParameter("@p_MaTaiKhoan", maTK) };
+                    DataTable dt = DatabaseHelper.ExecuteProcedure("sp_DatLaiMatKhau", pars);
+
+                    if (dt.Rows.Count > 0 && Convert.ToInt32(dt.Rows[0]["KetQua"]) == 1)
+                    {
+                        MessageBox.Show(dt.Rows[0]["ThongBao"].ToString() ?? "Đã reset mật khẩu thành công về '123456'!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        string msg = dt.Rows.Count > 0 ? dt.Rows[0]["ThongBao"].ToString() ?? "Lỗi" : "Lỗi";
+                        MessageBox.Show(msg, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -576,15 +576,23 @@ namespace ProjectHEQTCSDL.FormUI
 
             try
             {
-                var pars = new SqlParameter[] { new SqlParameter("@id", maSach) };
-                DatabaseHelper.ExecuteNonQuery("DELETE FROM Sach WHERE MaSach = @id", pars);
+                var pars = new SqlParameter[] { new SqlParameter("@p_MaSach", maSach) };
+                DataTable dt = DatabaseHelper.ExecuteProcedure("sp_XoaDauSach", pars);
 
-                MessageBox.Show($"Đã xóa đầu sách '{tenSach}' thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                LoadSach();
+                if (dt.Rows.Count > 0 && Convert.ToInt32(dt.Rows[0]["KetQua"]) == 1)
+                {
+                    MessageBox.Show(dt.Rows[0]["ThongBao"].ToString() ?? $"Đã xóa đầu sách '{tenSach}' thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    LoadSach();
+                }
+                else
+                {
+                    string msg = dt.Rows.Count > 0 ? dt.Rows[0]["ThongBao"].ToString() ?? "Lỗi xóa" : "Lỗi xóa";
+                    MessageBox.Show($"❌ KHÔNG THỂ XÓA ĐẦU SÁCH:\n\n{msg}", "Cảnh Báo Toàn Vẹn CSDL", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
             }
             catch (SqlException sqlEx)
             {
-                MessageBox.Show($"❌ TRIGGER NGĂN CHẶN THAO TÁC XÓA:\n\n{sqlEx.Message}", "Cảnh Báo Toàn Vẹn CSDL", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"❌ TRIGGER/GIAO TÁC NGĂN CHẶN THAO TÁC XÓA:\n\n{sqlEx.Message}", "Cảnh Báo Toàn Vẹn CSDL", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
             catch (Exception ex)
             {

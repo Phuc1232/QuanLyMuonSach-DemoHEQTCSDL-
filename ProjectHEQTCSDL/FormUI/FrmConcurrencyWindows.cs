@@ -1123,15 +1123,30 @@ namespace ProjectHEQTCSDL.FormUI
 
             try
             {
-                int rows = await DatabaseHelper.ExecuteNonQueryAsync("UPDATE CuonSach SET TrangThai = 'DangMuon' WHERE MaCuonSach = 'CS002'");
-                if (rows > 0)
+                var pars = new SqlParameter[] { 
+                    new SqlParameter("@p_MaPhieuMuon", "PM011"),
+                    new SqlParameter("@p_MaDG", "DG002"),
+                    new SqlParameter("@p_MaNV", "NV002"),
+                    new SqlParameter("@p_NgayHenTra", DateTime.Now.AddDays(10))
+                 };
+                var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_LapPhieuMuon", pars);
+
+                bool isSuccess = dt.Rows.Count > 0 && (
+                    (dt.Columns.Contains("IsSuccess") && Convert.ToInt32(dt.Rows[0]["IsSuccess"]) == 1) ||
+                    (dt.Columns.Contains("KetQua") && Convert.ToInt32(dt.Rows[0]["KetQua"]) == 1)
+                );
+                string msg = dt.Rows.Count > 0 && dt.Columns.Contains("ThongBao") 
+                    ? dt.Rows[0]["ThongBao"].ToString() ?? "" 
+                    : "Đã cho mượn thành công!";
+
+                if (isSuccess)
                 {
-                    SetAlert("Cho Mượn Thành Công", "Đã chuyển cuốn sách CS002 sang 'DangMuon' và lưu vào CSDL thành công.", AlertType.Success);
-                    MessageBox.Show("Thủ thư đã xác nhận cho mượn cuốn sách CS002 thành công!\nTrạng thái cuốn sách đã chuyển thành 'DangMuon'.", "Cho Mượn Sách Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    SetAlert("Cho Mượn Thành Công", "Đã chuyển cuốn sách CS002 sang 'DangMuon' qua Stored Procedure thành công.", AlertType.Success);
+                    MessageBox.Show("Thủ thư đã xác nhận cho mượn cuốn sách CS002 thành công qua Stored Procedure!\nTrạng thái cuốn sách đã chuyển thành 'DangMuon'.", "Cho Mượn Sách Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
                 {
-                    SetAlert("Cảnh Báo", "Không tìm thấy cuốn sách CS002 hoặc sách đã ở trạng thái mượn.", AlertType.Warning);
+                    SetAlert("Cảnh Báo", !string.IsNullOrEmpty(msg) ? msg : "Không tìm thấy cuốn sách CS002 hoặc sách đã ở trạng thái mượn.", AlertType.Warning);
                 }
                 OnDataChanged?.Invoke();
             }
