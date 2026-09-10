@@ -13,7 +13,6 @@ namespace ProjectHEQTCSDL.FormUI
         // Controls
         private ComboBox cboScenario = null!;
         private Button btnLaunchWindows = null!;
-        private Button btnReset = null!;
         private Button btnRefreshDB = null!;
         private DataGridView dgvDBState = null!;
         private TextBox txtExplanation = null!;
@@ -29,16 +28,6 @@ namespace ProjectHEQTCSDL.FormUI
             InitializeComponent();
             this.Load += (s, e) =>
             {
-                try
-                {
-                    DatabaseHelper.ExecuteNonQuery(@"
-                        IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'CuonSach' AND COLUMN_NAME = 'TinhTrang' AND (CHARACTER_MAXIMUM_LENGTH < 100 OR DATA_TYPE = 'varchar'))
-                        BEGIN
-                            ALTER TABLE CuonSach ALTER COLUMN TinhTrang NVARCHAR(100) NOT NULL;
-                        END");
-                }
-                catch { }
-
                 cboScenario.SelectedIndex = 0;
                 RefreshDatabaseInspector();
             };
@@ -46,7 +35,7 @@ namespace ProjectHEQTCSDL.FormUI
 
         private void InitializeComponent()
         {
-            this.Text = "⚡ TRUNG TÂM ĐIỀU KHIỂN & GIÁM SÁT CSDL - DEMO TƯƠNG TRANH (HQTCSDL)";
+            this.Text = "TRUNG TÂM ĐIỀU KHIỂN & GIÁM SÁT CSDL - DEMO TƯƠNG TRANH (HQTCSDL)";
             this.Size = new Size(1100, 720);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = Color.FromArgb(248, 250, 252);
@@ -64,7 +53,7 @@ namespace ProjectHEQTCSDL.FormUI
 
             var lblTitle = new Label
             {
-                Text = "⚡ TRUNG TÂM ĐIỀU KHIỂN & GIÁM SÁT CSDL ĐA LUỒNG",
+                Text = "TRUNG TÂM ĐIỀU KHIỂN & GIÁM SÁT CSDL ĐA LUỒNG",
                 Font = new Font("Segoe UI", 13F, FontStyle.Bold),
                 ForeColor = Color.White,
                 Dock = DockStyle.Top,
@@ -121,7 +110,7 @@ namespace ProjectHEQTCSDL.FormUI
 
             btnLaunchWindows = new Button
             {
-                Text = "🚀 MỞ 2 CỬA SỔ NGHIỆP VỤ",
+                Text = "MỞ 2 CỬA SỔ NGHIỆP VỤ",
                 Location = new Point(490, 14),
                 Width = 230,
                 Height = 36,
@@ -134,26 +123,11 @@ namespace ProjectHEQTCSDL.FormUI
             btnLaunchWindows.FlatAppearance.BorderSize = 0;
             btnLaunchWindows.Click += (s, e) => LaunchSubWindows();
 
-            btnReset = new Button
-            {
-                Text = "↺ Reset CSDL Chuẩn",
-                Location = new Point(730, 14),
-                Width = 175,
-                Height = 36,
-                BackColor = Color.FromArgb(71, 85, 105),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnReset.FlatAppearance.BorderSize = 0;
-            btnReset.Click += async (s, e) => await ResetDemoData();
-
             btnRefreshDB = new Button
             {
-                Text = "🔄 F5 CSDL",
-                Location = new Point(915, 14),
-                Width = 120,
+                Text = "TẢI LẠI DỮ LIỆU CSDL",
+                Location = new Point(735, 14),
+                Width = 195,
                 Height = 36,
                 BackColor = Color.FromArgb(13, 148, 136),
                 ForeColor = Color.White,
@@ -164,7 +138,7 @@ namespace ProjectHEQTCSDL.FormUI
             btnRefreshDB.FlatAppearance.BorderSize = 0;
             btnRefreshDB.Click += (s, e) => RefreshDatabaseInspector();
 
-            pnlToolbar.Controls.AddRange(new Control[] { lblSelect, cboScenario, btnLaunchWindows, btnReset, btnRefreshDB });
+            pnlToolbar.Controls.AddRange(new Control[] { lblSelect, cboScenario, btnLaunchWindows, btnRefreshDB });
             this.Controls.Add(pnlToolbar);
 
             // 3. SCENARIO SUMMARY BANNER
@@ -200,7 +174,7 @@ namespace ProjectHEQTCSDL.FormUI
             // Left: DB Inspector
             var grpDB = new GroupBox
             {
-                Text = "🔍 BẢNG GIÁM SÁT CSDL TRỰC TIẾP (REAL-TIME DB INSPECTOR)",
+                Text = "BẢNG GIÁM SÁT CSDL TRỰC TIẾP (REAL-TIME DB INSPECTOR)",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(15, 23, 42),
@@ -234,7 +208,7 @@ namespace ProjectHEQTCSDL.FormUI
             // Right: Explanation
             var grpExp = new GroupBox
             {
-                Text = "💡 GIẢI THÍCH HIỆN TƯỢNG & CƠ CHẾ KHÓA TRONG CSDL",
+                Text = "PHÂN TÍCH HIỆN TƯỢNG & CƠ CHẾ KHÓA TRONG CSDL",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(180, 83, 9),
@@ -282,7 +256,7 @@ namespace ProjectHEQTCSDL.FormUI
             switch (idx)
             {
                 case 0:
-                    lblScenarioSummary.Text = "📌 Kịch Bản 1: Lost Update (Mất bản cập nhật) - 2 Thủ thư cùng sửa tình trạng sách CS001, người lưu sau ghi đè người lưu trước.";
+                    lblScenarioSummary.Text = "Kịch Bản 1: Lost Update (Mất bản cập nhật) - 2 Thủ thư cùng sửa tình trạng sách CS001, người lưu sau ghi đè người lưu trước.";
                     lblDbTitle.Text = "Bảng CuonSach (Quan sát cột TinhTrang của mã CS001):";
                     txtExplanation.Text =
                         "=== 1. HIỆN TƯỢNG LOST UPDATE ===\r\n\r\n" +
@@ -299,7 +273,7 @@ namespace ProjectHEQTCSDL.FormUI
                     break;
 
                 case 1:
-                    lblScenarioSummary.Text = "📌 Kịch Bản 2: Dirty Read (Đọc rác) - Độc giả tra cứu sách với READ UNCOMMITTED khi Thủ thư đang làm thủ tục trả chưa hoàn tất.";
+                    lblScenarioSummary.Text = "Kịch Bản 2: Dirty Read (Đọc rác) - Độc giả tra cứu sách với READ UNCOMMITTED khi Thủ thư đang làm thủ tục trả chưa hoàn tất.";
                     lblDbTitle.Text = "Bảng CuonSach (Quan sát cột TrangThai của mã CS001):";
                     txtExplanation.Text =
                         "=== 2. HIỆN TƯỢNG DIRTY READ (ĐỌC DỮ LIỆU RÁC) ===\r\n\r\n" +
@@ -317,7 +291,7 @@ namespace ProjectHEQTCSDL.FormUI
                     break;
 
                 case 2:
-                    lblScenarioSummary.Text = "📌 Kịch Bản 3: Non-Repeatable Read (Đọc không nhất quán) - Quản lý kiểm kê kho đọc 2 lần trong 1 Transaction, bị Thủ thư xen ngang cho mượn.";
+                    lblScenarioSummary.Text = "Kịch Bản 3: Non-Repeatable Read (Đọc không nhất quán) - Quản lý kiểm kê kho đọc 2 lần trong 1 Transaction, bị Thủ thư xen ngang cho mượn.";
                     lblDbTitle.Text = "Bảng CuonSach thuộc Đầu Sách S001 (Lập trình C#):";
                     txtExplanation.Text =
                         "=== 3. HIỆN TƯỢNG NON-REPEATABLE READ ===\r\n\r\n" +
@@ -333,7 +307,7 @@ namespace ProjectHEQTCSDL.FormUI
                     break;
 
                 case 3:
-                    lblScenarioSummary.Text = "📌 Kịch Bản 4: Phantom Read (Đọc dòng bóng ma) - Kế toán đếm tổng số phiếu phạt, Thủ thư xen ngang INSERT thêm phiếu phạt mới.";
+                    lblScenarioSummary.Text = "Kịch Bản 4: Phantom Read (Đọc dòng bóng ma) - Kế toán đếm tổng số phiếu phạt, Thủ thư xen ngang INSERT thêm phiếu phạt mới.";
                     lblDbTitle.Text = "Bảng PhieuPhat (Quan sát sự xuất hiện của phiếu PP999):";
                     txtExplanation.Text =
                         "=== 4. HIỆN TƯỢNG PHANTOM READ (ĐỌC BÓNG MA) ===\r\n\r\n" +
@@ -348,7 +322,7 @@ namespace ProjectHEQTCSDL.FormUI
                     break;
 
                 case 4:
-                    lblScenarioSummary.Text = "📌 Kịch Bản 5: Deadlock (Bế tắc chu trình) - 2 giao tác mượn sách khóa chéo tài nguyên CS001 (Clean Code) và CS004 (Đắc Nhân Tâm).";
+                    lblScenarioSummary.Text = "Kịch Bản 5: Deadlock (Bế tắc chu trình) - 2 giao tác mượn sách khóa chéo tài nguyên CS001 (Clean Code) và CS004 (Đắc Nhân Tâm).";
                     lblDbTitle.Text = "Bảng CuonSach (Quan sát CS001 và CS004):";
                     txtExplanation.Text =
                         "=== 5. HIỆN TƯỢNG DEADLOCK (BẾ TẮC TƯƠNG HỖ) ===\r\n\r\n" +
@@ -397,60 +371,6 @@ namespace ProjectHEQTCSDL.FormUI
                 {
                     txtExplanation.AppendText($"\r\n[Lỗi tải CSDL]: {ex.Message}");
                 }
-            }
-        }
-
-        private async Task ResetDemoData()
-        {
-            try
-            {
-                var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_ResetDuLieuDemoTuongTranh");
-                
-                // Tự động thiết lập riêng theo từng kịch bản
-                int scenario = cboScenario.SelectedIndex;
-                if (scenario == 0 || scenario == 1)
-                {
-                    string setupSql = @"
-                        IF NOT EXISTS (SELECT 1 FROM PhieuMuon WHERE MaPhieuMuon = 'PM_DEMO1')
-                            INSERT INTO PhieuMuon (MaPhieuMuon, MaDG, MaNV, NgayMuon, NgayHenTra, TrangThai) VALUES ('PM_DEMO1', 'DG001', 'NV001', GETDATE(), DATEADD(DAY, 14, GETDATE()), 'DangMuon');
-                        
-                        IF NOT EXISTS (SELECT 1 FROM CT_PhieuMuon WHERE MaPhieuMuon = 'PM_DEMO1' AND MaCuonSach = 'CS001')
-                            INSERT INTO CT_PhieuMuon (MaPhieuMuon, MaCuonSach, TinhTrangSachKhiTra) VALUES ('PM_DEMO1', 'CS001', 'ChuaTra');
-                            
-                        UPDATE CuonSach SET TrangThai = 'DangMuon' WHERE MaCuonSach = 'CS001';
-                    ";
-                    await Task.Run(() => DatabaseHelper.ExecuteQuery(setupSql));
-                }
-                else if (scenario == 2)
-                {
-                    // Non-Repeatable Read: Đảm bảo cả 3 cuốn của S001 đều có sẵn
-                    string setupSql = @"
-                        UPDATE CuonSach SET TrangThai = 'CoSan', TinhTrang = 'ConTot' WHERE MaSach = 'S001';
-                    ";
-                    await Task.Run(() => DatabaseHelper.ExecuteQuery(setupSql));
-                }
-                else if (scenario == 3)
-                {
-                    // Phantom Read: Xóa bản ghi bóng ma PP999 nếu có
-                    string setupSql = @"
-                        DELETE FROM PhieuPhat WHERE MaPhieuPhat = 'PP999';
-                    ";
-                    await Task.Run(() => DatabaseHelper.ExecuteQuery(setupSql));
-                }
-
-                string msg = dt.Rows.Count > 0 ? (dt.Rows[0]["ThongBao"]?.ToString() ?? "Đã khôi phục CSDL chuẩn!") : "Đã reset!";
-                MessageBox.Show(msg, "Khôi Phục Dữ Liệu Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                RefreshDatabaseInspector();
-
-                // Also notify open child windows
-                if (activeWin1 is FrmLostUpdateWin1 lu1) lu1.LoadCurrentBookStatus();
-                if (activeWin2 is FrmLostUpdateWin2 lu2) lu2.LoadCurrentBookStatus();
-                if (activeWin1 is FrmDeadlockWin1 dl1) _ = dl1.LoadBookStatus();
-                if (activeWin2 is FrmDeadlockWin2 dl2) _ = dl2.LoadBookStatus();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Lỗi khi reset CSDL: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

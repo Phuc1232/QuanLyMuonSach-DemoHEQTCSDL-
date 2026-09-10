@@ -223,6 +223,13 @@ namespace ProjectHEQTCSDL.FormUI
 
             activeBtn.BackColor = Color.FromArgb(51, 65, 85);
             activeBtn.ForeColor = Color.White;
+
+            if (index == 2)
+            {
+                LoadCuonSachTraVeChoDatTruoc();
+                LoadDatTruoc();
+                txtMaPMMoi.Text = "PM" + DateTime.Now.ToString("HHmmss");
+            }
         }
 
         private void ToggleSidebar()
@@ -487,12 +494,16 @@ namespace ProjectHEQTCSDL.FormUI
             var pnlKhuVuc1 = new GroupBox { Text = "1. KÍCH HOẠT GIỮ CHỖ (Khi thu hồi bản sao vật lý vào kho)", Dock = DockStyle.Fill, Padding = new Padding(15) };
             
             var lblCuon = new Label { Text = "Sách Vừa Trả Về (Có Sẵn):", Location = new Point(15, 45), AutoSize = true, Font = new Font("Segoe UI", 9.5F, FontStyle.Bold) };
-            cboCuonSachTraVe = new ComboBox { Location = new Point(220, 42), Size = new Size(350, 28), DropDownStyle = ComboBoxStyle.DropDownList };
+            cboCuonSachTraVe = new ComboBox { Location = new Point(220, 42), Size = new Size(310, 28), DropDownStyle = ComboBoxStyle.DropDownList };
             
-            var btnXuLyKhuVuc1 = new Button { Text = "Giữ Chỗ Cho Độc Giả Chờ Sớm Nhất", Location = new Point(600, 38), Size = new Size(500, 38), BackColor = Color.FromArgb(5, 150, 105), ForeColor = Color.White, Font = new Font("Segoe UI", 10F, FontStyle.Bold), FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
+            var btnRefreshCuon = new Button { Text = "↺ Tải Lại Sách", Location = new Point(540, 39), Size = new Size(130, 34), BackColor = Color.White, ForeColor = Color.FromArgb(15, 23, 42), Font = new Font("Segoe UI", 9.5F, FontStyle.Bold), FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
+            btnRefreshCuon.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnRefreshCuon.Click += (s, e) => LoadCuonSachTraVeChoDatTruoc();
+
+            var btnXuLyKhuVuc1 = new Button { Text = "Giữ Chỗ Cho Độc Giả Chờ Sớm Nhất", Location = new Point(685, 37), Size = new Size(330, 38), BackColor = Color.FromArgb(5, 150, 105), ForeColor = Color.White, Font = new Font("Segoe UI", 10F, FontStyle.Bold), FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
             btnXuLyKhuVuc1.Click += BtnKhuVuc1_Click;
 
-            pnlKhuVuc1.Controls.AddRange(new Control[] { lblCuon, cboCuonSachTraVe, btnXuLyKhuVuc1 });
+            pnlKhuVuc1.Controls.AddRange(new Control[] { lblCuon, cboCuonSachTraVe, btnRefreshCuon, btnXuLyKhuVuc1 });
             split.Panel1.Controls.Add(pnlKhuVuc1);
 
             // Bottom: Khu vực 2 & 3
@@ -501,18 +512,27 @@ namespace ProjectHEQTCSDL.FormUI
             var pnlToolbar2 = new Panel { Dock = DockStyle.Top, Height = 80, BackColor = Color.FromArgb(241, 245, 249) };
             
             var lblPM = new Label { Text = "Mã PM Mới:", Location = new Point(15, 15), AutoSize = true, Font = new Font("Segoe UI", 9.5F, FontStyle.Bold) };
-            txtMaPMMoi = new TextBox { Location = new Point(120, 12), Size = new Size(160, 26), Text = "PM" + DateTime.Now.ToString("HHmmss") };
+            txtMaPMMoi = new TextBox { Location = new Point(115, 12), Size = new Size(140, 26), Text = "PM" + DateTime.Now.ToString("HHmmss") };
             
             var lblNgay = new Label { Text = "Ngày Trả:", Location = new Point(15, 45), AutoSize = true, Font = new Font("Segoe UI", 9.5F, FontStyle.Bold) };
-            dtpNgayHenTraDT = new DateTimePicker { Location = new Point(120, 42), Format = DateTimePickerFormat.Short, Value = DateTime.Today.AddDays(14) };
+            dtpNgayHenTraDT = new DateTimePicker { Location = new Point(115, 42), Size = new Size(140, 26), Format = DateTimePickerFormat.Short, Value = DateTime.Today.AddDays(14) };
 
-            var btnNhanSach = new Button { Text = "Giao Sách & Lập Phiếu Mượn", Location = new Point(320, 12), Size = new Size(380, 56), BackColor = Color.FromArgb(37, 99, 235), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10F, FontStyle.Bold), Cursor = Cursors.Hand };
+            var btnNhanSach = new Button { Text = "Giao Sách & Lập Phiếu Mượn", Location = new Point(275, 12), Size = new Size(240, 56), BackColor = Color.FromArgb(37, 99, 235), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10F, FontStyle.Bold), Cursor = Cursors.Hand };
             btnNhanSach.Click += BtnKhuVuc2_Click;
 
-            var btnHuy = new Button { Text = "Hủy Giữ Chỗ Quá Hạn 48h", Location = new Point(720, 12), Size = new Size(380, 56), BackColor = Color.FromArgb(220, 38, 38), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10F, FontStyle.Bold), Cursor = Cursors.Hand };
+            var btnHuy = new Button { Text = "Hủy Giữ Chỗ Quá Hạn 48h", Location = new Point(530, 12), Size = new Size(230, 56), BackColor = Color.FromArgb(220, 38, 38), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10F, FontStyle.Bold), Cursor = Cursors.Hand };
             btnHuy.Click += BtnKhuVuc3_Click;
 
-            pnlToolbar2.Controls.AddRange(new Control[] { lblPM, txtMaPMMoi, lblNgay, dtpNgayHenTraDT, btnNhanSach, btnHuy });
+            var btnRefreshDatTruoc = new Button { Text = "↺ Tải Lại Từ CSDL", Location = new Point(775, 12), Size = new Size(200, 56), BackColor = Color.White, ForeColor = Color.FromArgb(15, 23, 42), FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10F, FontStyle.Bold), Cursor = Cursors.Hand };
+            btnRefreshDatTruoc.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnRefreshDatTruoc.Click += (s, e) =>
+            {
+                LoadCuonSachTraVeChoDatTruoc();
+                LoadDatTruoc();
+                txtMaPMMoi.Text = "PM" + DateTime.Now.ToString("HHmmss");
+            };
+
+            pnlToolbar2.Controls.AddRange(new Control[] { lblPM, txtMaPMMoi, lblNgay, dtpNgayHenTraDT, btnNhanSach, btnHuy, btnRefreshDatTruoc });
 
             dgvDatTruoc = CreateStandardGrid();
             

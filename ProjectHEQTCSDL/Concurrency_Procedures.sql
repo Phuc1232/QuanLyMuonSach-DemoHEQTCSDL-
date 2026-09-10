@@ -9,10 +9,21 @@ GO
 -- =========================================================================
 -- 0. STORED PROCEDURE RESET DỮ LIỆU DEMO VỀ TRẠNG THÁI CHUẨN & CHUẨN HÓA CSDL
 -- =========================================================================
--- Đảm bảo độ dài cột TinhTrang tối thiểu NVARCHAR(100) để không bị lỗi truncate
+-- Đảm bảo độ dài cột TinhTrang tối thiểu NVARCHAR(100) để không bị lỗi truncate (xử lý an toàn ràng buộc DEFAULT)
 IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'CuonSach' AND COLUMN_NAME = 'TinhTrang' AND (CHARACTER_MAXIMUM_LENGTH < 100 OR DATA_TYPE = 'varchar'))
 BEGIN
+    DECLARE @dfName NVARCHAR(256);
+    SELECT @dfName = d.name 
+    FROM sys.default_constraints d 
+    JOIN sys.columns c ON d.parent_object_id = c.object_id AND d.parent_column_id = c.column_id
+    WHERE d.parent_object_id = OBJECT_ID('CuonSach') AND c.name = 'TinhTrang';
+
+    IF @dfName IS NOT NULL
+        EXEC('ALTER TABLE CuonSach DROP CONSTRAINT ' + @dfName);
+
     ALTER TABLE CuonSach ALTER COLUMN TinhTrang NVARCHAR(100) NOT NULL;
+
+    ALTER TABLE CuonSach ADD CONSTRAINT DF_CuonSach_TinhTrang DEFAULT N'ConTot' FOR TinhTrang;
 END
 GO
 
@@ -20,12 +31,6 @@ CREATE OR ALTER PROCEDURE sp_ResetDuLieuDemoTuongTranh
 AS
 BEGIN
     SET NOCOUNT ON;
-    
-    -- Đảm bảo cột TinhTrang có độ dài NVARCHAR(100)
-    IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'CuonSach' AND COLUMN_NAME = 'TinhTrang' AND (CHARACTER_MAXIMUM_LENGTH < 100 OR DATA_TYPE = 'varchar'))
-    BEGIN
-        ALTER TABLE CuonSach ALTER COLUMN TinhTrang NVARCHAR(100) NOT NULL;
-    END
 
     -- Đưa các cuốn sách mẫu về ConTot và CoSan
     UPDATE CuonSach 
