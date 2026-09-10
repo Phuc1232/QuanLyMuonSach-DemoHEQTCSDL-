@@ -154,6 +154,15 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
 
+        -- [CÀI ĐẶT PHÒNG NGỪA DEADLOCK - ORDERING PROTOCOL]
+        -- Ép SQL Server cấp khóa U-Lock theo thứ tự MaCuonSach tăng dần để triệt tiêu Circular Wait
+        DECLARE @v_PreventDeadlock TABLE (MaCuonSach VARCHAR(10));
+        INSERT INTO @v_PreventDeadlock (MaCuonSach)
+        SELECT d.MaCuonSach 
+        FROM @p_DanhSachCuonSach d 
+        JOIN CuonSach cs WITH (UPDLOCK, ROWLOCK) ON d.MaCuonSach = cs.MaCuonSach 
+        ORDER BY d.MaCuonSach ASC;
+
         -- B1: Kiểm tra điều kiện mượn của độc giả
         SET @v_DieuKien = dbo.fn_KiemTraDuDieuKienMuon(@p_MaDG);
         IF @v_DieuKien <> N'Đủ điều kiện mượn sách'
@@ -982,11 +991,20 @@ Các Stored Procedures phục vụ module demo Interactive GUI cho 4 kịch bả
 *   **Cơ chế:** Sử dụng mức cô lập `SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;` để vượt qua Shared Lock và đọc dữ liệu đang bị khóa.
 
 ### 7.3. Kịch bản 3: Đọc không nhất quán (Non-Repeatable Read)
-*   **Tên SP 1 (Quản lý Kiểm kê):** `sp_Demo_NonRepeatableRead_KiemKe`
-    *   **Mục đích:** Đếm số sách đang có sẵn bằng mức cô lập mặc định `READ COMMITTED`. Mức cô lập này nhả Shared Lock ngay sau khi đọc nên cho phép luồng khác sửa dữ liệu.
+*   **Tên SP 1 (Quản lý Kiểm kê):** `sp_BaoCaoKiemKeKho`
+    *   **Mục đích:** Đếm số sách đang có sẵn bằng mức cô lập mặc định `READ COMMITTED`. Mức cô lập này nhả Shared Lock (S-Lock) ngay sau khi đọc lần 1, tạo kẽ hở 10s để luồng khác sửa đổi dữ liệu.
+    *   **Giải pháp:** Nâng mức cô lập lên `SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;` để giữ S-Lock đến hết Transaction, tự động chặn luồng khác sửa bản ghi.
+    *   **View đối chiếu:** `View_QuanLyKhoSach_Admin` và bảng `CuonSach` của đầu sách `S001`.
 *   **Tên SP 2 (Thủ thư Cho Mượn):** `sp_Demo_NonRepeatableRead_ChoMuon`
-    *   **Mục đích:** Cập nhật cuốn sách sang trạng thái `DangMuon` để xen vào giữa giao dịch đếm lần 1 và lần 2 của Quản lý, làm thay đổi tập kết quả.
+    *   **Mục đích:** Cập nhật cuốn sách `CS002` sang trạng thái `DangMuon` để xen vào giữa giao dịch đếm lần 1 và lần 2 của Quản lý, làm thay đổi tập kết quả từ 3 cuốn xuống 2 cuốn.
 
+### 7.4. Kịch bản 4: Đọc dòng bóng ma (Phantom Read)
+*   **Tên SP 1 (Kế toán Tổng hợp):** `sp_BaoCaoTongHopPhieuPhat`
+    *   **Mục đích:** Đếm tổng số phiếu phạt trong thư viện bằng mức cô lập `REPEATABLE READ`. Mức này chỉ khóa các dòng hiện hữu (Row Lock) mà không khóa khoảng trống dải dữ liệu (Gap / Key-Range Lock). Trong 10s chờ đọc lần 2, cho phép luồng khác chèn bản ghi mới.
+    *   **Giải pháp:** Nâng mức cô lập lên `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;` để SQL Server thiết lập khóa Key-Range (RangeS-S), tự động chặn mọi thao tác INSERT vào dải dữ liệu cho đến khi Transaction kết thúc.
+    *   **View đối chiếu:** `View_DanhSachPhieuPhat_ChiTiet` (hiển thị rõ dòng bóng ma `PP999` xuất hiện ở lần đọc 2).
+*   **Tên SP 2 (Thủ thư Lập Phiếu Phạt):** `sp_TaoPhieuPhatNhanh`
+    *   **Mục đích:** Chèn mới bản ghi phiếu phạt `PP999` vào bảng `PhieuPhat` trong lúc Kế toán đang mở Transaction tổng hợp, tạo ra hiện tượng Phantom Read.
 
 ---
 

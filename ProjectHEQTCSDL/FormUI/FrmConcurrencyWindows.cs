@@ -76,14 +76,13 @@ namespace ProjectHEQTCSDL.FormUI
 
             pnlHeader.Controls.Add(lblHeaderSub);
             pnlHeader.Controls.Add(lblHeaderTitle);
-            this.Controls.Add(pnlHeader);
 
             // 2. Status Alert Panel at Bottom (Modern Card)
             var pnlBottomContainer = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 135,
-                Padding = new Padding(15, 5, 15, 15),
+                Height = 115,
+                Padding = new Padding(15, 5, 15, 10),
                 BackColor = Color.FromArgb(248, 250, 252)
             };
 
@@ -102,7 +101,7 @@ namespace ProjectHEQTCSDL.FormUI
             {
                 Text = "ℹ️",
                 Font = new Font("Segoe UI", 14F),
-                Location = new Point(10, 10),
+                Location = new Point(12, 10),
                 Size = new Size(35, 35),
                 TextAlign = ContentAlignment.MiddleCenter
             };
@@ -112,8 +111,9 @@ namespace ProjectHEQTCSDL.FormUI
                 Text = "Sẵn sàng thực hiện nghiệp vụ",
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(30, 41, 59),
-                Location = new Point(50, 10),
-                Size = new Size(480, 24)
+                Location = new Point(55, 10),
+                Size = new Size(480, 20),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
 
             lblAlertDetail = new Label
@@ -121,8 +121,9 @@ namespace ProjectHEQTCSDL.FormUI
                 Text = "Vui lòng chọn thao tác nghiệp vụ ở phía trên để bắt đầu giao tác.",
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Color.FromArgb(100, 116, 139),
-                Location = new Point(50, 34),
-                Size = new Size(480, 40)
+                Location = new Point(55, 30),
+                Size = new Size(480, 32),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
 
             lblTimerStatus = new Label
@@ -130,15 +131,18 @@ namespace ProjectHEQTCSDL.FormUI
                 Text = "",
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(220, 38, 38),
-                Location = new Point(50, 72),
-                AutoSize = true,
+                Location = new Point(55, 64),
+                Size = new Size(480, 16),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                AutoSize = false,
                 Visible = false
             };
 
             prgTimer = new ProgressBar
             {
-                Location = new Point(50, 92),
+                Location = new Point(55, 82),
                 Size = new Size(475, 10),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Style = ProgressBarStyle.Continuous,
                 Value = 0,
                 Visible = false
@@ -146,16 +150,22 @@ namespace ProjectHEQTCSDL.FormUI
 
             pnlStatusAlert.Controls.AddRange(new Control[] { lblAlertIcon, lblAlertTitle, lblAlertDetail, lblTimerStatus, prgTimer });
             pnlBottomContainer.Controls.Add(pnlStatusAlert);
-            this.Controls.Add(pnlBottomContainer);
 
             // 3. Main Body Panel
             pnlBody = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(15),
-                AutoScroll = true
+                Padding = new Padding(12, 8, 12, 8),
+                AutoScroll = false
             };
+
+            // BẮT BUỘC trong WinForms: Thêm pnlBody (DockStyle.Fill) ĐẦU TIÊN vào Controls collection,
+            // sau đó mới thêm pnlBottomContainer và pnlHeader.
+            // Điều này đảm bảo pnlHeader và pnlBottomContainer chiếm chỗ trước, và pnlBody nhận phần diện tích
+            // khả dụng ở giữa (bắt đầu từ Y = 75), KHÔNG bao giờ bị pnlHeader đè khuất phần trên!
             this.Controls.Add(pnlBody);
+            this.Controls.Add(pnlBottomContainer);
+            this.Controls.Add(pnlHeader);
         }
 
         public void SetAlert(string title, string detail, AlertType type)
@@ -1404,91 +1414,265 @@ namespace ProjectHEQTCSDL.FormUI
     // =========================================================================
     public class FrmDeadlockWin1 : FrmConcurrencyBase
     {
-        private Button btnT1 = null!;
+        private TextBox txtBooks = null!;
+        private Button btnConfirm = null!;
+        private Label lblBookStatus = null!;
 
         public FrmDeadlockWin1() : base(
-            "👤 [User 1] Giao Tác T1 (Khóa CS001 -> Đòi CS002)",
-            "Kịch bản 5: Bế tắc Deadlock giữa 2 giao dịch phụ thuộc chéo",
+            "👤 [Quầy 1] THỦ THƯ A - LẬP PHIẾU MƯỢN",
+            "Nghiệp vụ lập phiếu mượn sách cho Độc giả DG002 (Trần Minh Tuấn)",
             Color.FromArgb(30, 58, 138))
         {
-            this.Text = "👤 [User 1] Giao Tác T1 - Chiếm CS001 rồi chờ khóa CS002";
+            this.Text = "👤 [Quầy 1] Thủ Thư A - Lập Phiếu Mượn Sách";
+            pnlBody.AutoScroll = false;
+            pnlBody.Padding = new Padding(12, 8, 12, 8);
             BuildUI();
+            _ = LoadBookStatus();
         }
 
         private void BuildUI()
         {
-            var pnlGuide = new Panel
+            var tlpMain = new TableLayoutPanel
             {
-                Dock = DockStyle.Top,
-                Height = 85,
-                BackColor = Color.FromArgb(238, 242, 255),
-                Padding = new Padding(10)
-            };
-            pnlGuide.Controls.Add(new Label
-            {
-                Text = "📌 Hướng Dẫn Nghiệp Vụ Deadlock:\n1. Bấm nút [Thực Thi T1] -> T1 khóa độc quyền CS001 và chờ 5s.\n2. Ngay lập tức, bấm nút [Thực Thi T2] ở cửa sổ bên phải -> T2 khóa CS002 và chờ 5s.\n3. Cả 2 giao tác đòi khóa chéo -> SQL Server tự động Rollback 1 bên (Lỗi 1205 Deadlock)!",
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.FromArgb(30, 58, 138)
-            });
-            pnlBody.Controls.Add(pnlGuide);
+                ColumnCount = 1,
+                RowCount = 6,
+                Padding = new Padding(0)
+            };
+            tlpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
+            // 1. Thông tin độc giả và phiếu mượn (Cao 96px, rộng rãi thoải mái)
+            var grpReader = new GroupBox
+            {
+                Text = "📋 THÔNG TIN ĐỘC GIẢ VÀ PHIẾU MƯỢN",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Padding = new Padding(12, 22, 12, 8)
+            };
+            var lblReaderInfo = new Label
+            {
+                Text = "• Độc giả: DG002 - Trần Minh Tuấn (Sinh viên | Thẻ: Còn hạn)\n• Mã phiếu: PM1_AUTO   |   Hạn trả: 14 ngày   |   Nhân viên: NV001",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(30, 41, 59)
+            };
+            grpReader.Controls.Add(lblReaderInfo);
+
+            // 2. Máy quét mã vạch và danh sách sách (Cao 136px)
+            var grpScanner = new GroupBox
+            {
+                Text = "📷 QUÉT MÃ VẠCH SÁCH MƯỢN (BARCODE SCANNER)",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Padding = new Padding(12, 22, 12, 8)
+            };
+            var tlpScanner = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 3,
+                Padding = new Padding(0)
+            };
+            tlpScanner.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
+            tlpScanner.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tlpScanner.RowStyles.Add(new RowStyle(SizeType.Absolute, 26F));
+
+            var lblPrompt = new Label
+            {
+                Text = "Thứ tự quét mã vạch các cuốn sách:",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 8.8F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
+            };
+            txtBooks = new TextBox
+            {
+                Text = "CS001, CS004",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 58, 138)
+            };
+            var lblRecognized = new Label
+            {
+                Text = "Sách nhận diện: [CS001] Clean Code  |  [CS004] Đắc Nhân Tâm",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 8.8F, FontStyle.Italic),
+                ForeColor = Color.FromArgb(100, 116, 139)
+            };
+
+            tlpScanner.Controls.Add(lblPrompt, 0, 0);
+            tlpScanner.Controls.Add(txtBooks, 0, 1);
+            tlpScanner.Controls.Add(lblRecognized, 0, 2);
+            grpScanner.Controls.Add(tlpScanner);
+
+            // 3. Nút xác nhận lập phiếu mượn (Cao 90px)
             var grpAction = new GroupBox
             {
-                Text = "⚡ Tiến Trình Giao Tác T1",
-                Dock = DockStyle.Top,
-                Height = 140,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Text = "⚡ THAO TÁC NGHIỆP VỤ",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Padding = new Padding(12, 22, 12, 10)
             };
-
-            btnT1 = new Button
+            btnConfirm = new Button
             {
-                Text = "⚡ 1. THỰC THI GIAO TÁC T1 (Khóa CS001 -> Đòi CS002)",
-                Location = new Point(20, 40),
-                Size = new Size(490, 55),
-                BackColor = Color.FromArgb(37, 99, 235),
+                Text = "📝 XÁC NHẬN LẬP PHIẾU MƯỢN (sp_LapPhieuMuon_Deadlock)",
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(220, 38, 38),
                 ForeColor = Color.White,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand
             };
-            btnT1.FlatAppearance.BorderSize = 0;
-            btnT1.Click += async (s, e) => await ExecuteT1();
+            btnConfirm.FlatAppearance.BorderSize = 0;
+            btnConfirm.Click += async (s, e) => await ExecuteT1();
+            grpAction.Controls.Add(btnConfirm);
 
-            grpAction.Controls.Add(btnT1);
-            pnlBody.Controls.Add(grpAction);
+            // 4. Bảng giám sát trạng thái sách Realtime (Cao 106px)
+            var grpStatus = new GroupBox
+            {
+                Text = "📊 TRẠNG THÁI SÁCH TRONG KHO (REALTIME MONITOR)",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Padding = new Padding(12, 22, 12, 8)
+            };
+            lblBookStatus = new Label
+            {
+                Text = "Đang đồng bộ trạng thái sách từ CSDL...",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(2, 132, 199)
+            };
+            grpStatus.Controls.Add(lblBookStatus);
+            
+            // 5. Panel hướng dẫn thêm (Cao 48px)
+            var pnlHint = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(254, 243, 199),
+                Padding = new Padding(10, 8, 10, 8)
+            };
+            var lblHint = new Label
+            {
+                Text = "💡 Hướng dẫn: Bấm đồng thời Quầy 1 và Quầy 2 để kích hoạt Deadlock (Lỗi 1205).",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(146, 64, 14),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            pnlHint.Controls.Add(lblHint);
 
-            grpAction.BringToFront();
-            pnlGuide.BringToFront();
+            // Cấu hình chiều cao cho các dòng trong TableLayoutPanel:
+            tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 96F));   // grpReader
+            tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 136F));  // grpScanner
+            tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 90F));   // grpAction
+            tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 106F));  // grpStatus
+            tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));   // pnlHint
+            tlpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));   // Flexible bottom buffer
+
+            tlpMain.Controls.Add(grpReader, 0, 0);
+            tlpMain.Controls.Add(grpScanner, 0, 1);
+            tlpMain.Controls.Add(grpAction, 0, 2);
+            tlpMain.Controls.Add(grpStatus, 0, 3);
+            tlpMain.Controls.Add(pnlHint, 0, 4);
+
+            pnlBody.Controls.Add(tlpMain);
+        }
+
+        public async Task LoadBookStatus()
+        {
+            try
+            {
+                var dt = await DatabaseHelper.ExecuteQueryAsync(
+                    "SELECT cs.MaCuonSach, s.TenSach, cs.TrangThai, cs.TinhTrang FROM CuonSach cs JOIN Sach s ON cs.MaSach = s.MaSach WHERE cs.MaCuonSach IN ('CS001', 'CS004') ORDER BY cs.MaCuonSach ASC");
+                if (dt.Rows.Count > 0)
+                {
+                    var lines = new List<string>();
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        lines.Add($"• [{row["MaCuonSach"]}] {row["TenSach"]}: {row["TrangThai"]} ({row["TinhTrang"]})");
+                    }
+                    lines.Add("🔄 Tự động đồng bộ 100% qua Database Trigger & Stored Procedure");
+                    lblBookStatus.Text = string.Join("\n", lines);
+                }
+            }
+            catch
+            {
+                lblBookStatus.Text = "Không thể lấy trạng thái sách từ CSDL.";
+            }
         }
 
         private async Task ExecuteT1()
         {
-            btnT1.Enabled = false;
-            StartCountdown(5, "[T1] Đang giữ khóa CS001");
-            SetAlert("Giao Tác T1 Đang Chạy", "Đã khóa CS001, đang chờ 5s trước khi yêu cầu khóa tiếp CS002...", AlertType.Warning);
+            var books = txtBooks.Text.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(b => b.Trim()).ToList();
+            if (books.Count < 2)
+            {
+                MessageBox.Show("Vui lòng nhập ít nhất 2 mã sách để thực nghiệm (vd: CS001, CS004).", "Lỗi Nhập Liệu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            string book1 = books[0];
+
+            btnConfirm.Enabled = false;
+            StartCountdown(5, $"Đang quét mã & xin khóa cuốn {book1}...");
+            SetAlert("Đang Lập Phiếu Mượn", $"Đang quét mã {book1}, xin chờ 5s để mô phỏng hệ thống xử lý...", AlertType.Warning);
 
             try
             {
-                var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_Demo_Deadlock_T1");
+                var dtBooks = new System.Data.DataTable();
+                dtBooks.Columns.Add("MaCuonSach", typeof(string));
+                foreach (var b in books)
+                {
+                    dtBooks.Rows.Add(b);
+                }
+
+                var pars = new SqlParameter[]
+                {
+                    new SqlParameter("@p_MaPhieuMuon", "PM1_" + DateTime.Now.ToString("HHmmss")),
+                    new SqlParameter("@p_MaDG", "DG002"),
+                    new SqlParameter("@p_MaNV", "NV001"),
+                    new SqlParameter("@p_NgayHenTra", DateTime.Now.AddDays(14)),
+                    new SqlParameter
+                    {
+                        ParameterName = "@p_DanhSachCuonSach",
+                        SqlDbType = System.Data.SqlDbType.Structured,
+                        TypeName = "dbo.DanhSachCuonSachType",
+                        Value = dtBooks
+                    },
+                    new SqlParameter("@p_DelayGiay", 5)
+                };
+
+                var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_LapPhieuMuon_Deadlock", pars);
                 StopCountdown();
-                if (dt.Rows.Count > 0)
+
+                if (dt != null && dt.Rows.Count > 0)
                 {
                     string msg = dt.Rows[0]["ThongBao"]?.ToString() ?? "";
                     int code = Convert.ToInt32(dt.Rows[0]["ErrorCode"]);
                     if (code == 1205)
                     {
-                        SetAlert("Xung Đột Deadlock (Mã lỗi 1205)", "Giao tác T1 bị SQL Server chọn làm nạn nhân (Deadlock Victim) và đã tự động Rollback!", AlertType.Danger);
-                        MessageBox.Show("🚨 GIAO DỊCH T1 BỊ HỦY DO DEADLOCK (LỖI 1205)!\n\nSQL Server phát hiện chu trình bế tắc tài nguyên giữa T1 và T2. Giao dịch T1 đã được tự động Rollback để giải phóng khóa.\n\nVui lòng thử lại thao tác.", "Xung Đột Bế Tắc (Deadlock Victim)", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                        SetAlert("Xung Đột Deadlock (Lỗi 1205)", "Giao tác Quầy 1 bị SQL Server chọn làm nạn nhân (Deadlock Victim) và tự động Rollback!", AlertType.Danger);
+                        MessageBox.Show("🚨 GIAO DỊCH QUẦY 1 BỊ HỦY DO DEADLOCK (LỖI 1205)!\n\nSQL Server phát hiện chu trình bế tắc tài nguyên (Circular Wait) giữa Quầy 1 và Quầy 2:\n• Quầy 1 giữ khóa CS001 và chờ CS004\n• Quầy 2 giữ khóa CS004 và chờ CS001\n\nSQL Server đã tự động ROLLBACK giao dịch của Quầy 1 để giải phóng tài nguyên. Dữ liệu sách được bảo toàn an toàn!", "Xung Đột Bế Tắc (Deadlock Victim)", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    }
+                    else if (code != 0)
+                    {
+                        SetAlert("Lỗi Nghiệp Vụ", msg, AlertType.Danger);
+                        MessageBox.Show("Thông báo: " + msg, "Lỗi Giao Tác", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                     else
                     {
-                        SetAlert("Giao Dịch T1 Thành Công", msg, AlertType.Success);
-                        MessageBox.Show("Giao dịch T1 đã hoàn thành thành công!", "Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        SetAlert("Lập Phiếu Mượn Thành Công", msg, AlertType.Success);
+                        MessageBox.Show("Giao dịch Quầy 1 đã hoàn thành thành công!\nPhiếu mượn đã được ghi nhận vào hệ thống.", "Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
-                OnDataChanged?.Invoke();
+                else
+                {
+                    SetAlert("Lập Phiếu Mượn Thành Công", "Đã cập nhật trạng thái các cuốn sách.", AlertType.Success);
+                    MessageBox.Show("Giao dịch Quầy 1 đã hoàn thành thành công!", "Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (SqlException ex) when (ex.Number == 1205)
+            {
+                StopCountdown();
+                SetAlert("Xung Đột Deadlock (Lỗi 1205)", "Giao tác Quầy 1 bị SQL Server chọn làm nạn nhân (Deadlock Victim) và tự động Rollback!", AlertType.Danger);
+                MessageBox.Show("🚨 GIAO DỊCH QUẦY 1 BỊ HỦY DO DEADLOCK (LỖI 1205)!\n\nSQL Server phát hiện chu trình bế tắc tài nguyên (Circular Wait) giữa Quầy 1 và Quầy 2:\n• Quầy 1 giữ khóa CS001 và chờ CS004\n• Quầy 2 giữ khóa CS004 và chờ CS001\n\nSQL Server đã tự động ROLLBACK giao dịch của Quầy 1 để giải phóng tài nguyên. Dữ liệu sách được bảo toàn an toàn!", "Xung Đột Bế Tắc (Deadlock Victim)", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
             catch (Exception ex)
             {
@@ -1498,7 +1682,9 @@ namespace ProjectHEQTCSDL.FormUI
             }
             finally
             {
-                btnT1.Enabled = true;
+                btnConfirm.Enabled = true;
+                await LoadBookStatus();
+                OnDataChanged?.Invoke();
             }
         }
     }
@@ -1506,91 +1692,265 @@ namespace ProjectHEQTCSDL.FormUI
 
     public class FrmDeadlockWin2 : FrmConcurrencyBase
     {
-        private Button btnT2 = null!;
+        private TextBox txtBooks = null!;
+        private Button btnConfirm = null!;
+        private Label lblBookStatus = null!;
 
         public FrmDeadlockWin2() : base(
-            "👤 [User 2] Giao Tác T2 (Khóa CS002 -> Đòi CS001)",
-            "Kịch bản 5: Bế tắc Deadlock giữa 2 giao dịch phụ thuộc chéo",
+            "👤 [Quầy 2] THỦ THƯ B - LẬP PHIẾU MƯỢN",
+            "Nghiệp vụ lập phiếu mượn sách cho Độc giả DG003 (Hoàng Thị Mai)",
             Color.FromArgb(180, 83, 9))
         {
-            this.Text = "👤 [User 2] Giao Tác T2 - Chiếm CS002 rồi chờ khóa CS001";
+            this.Text = "👤 [Quầy 2] Thủ Thư B - Lập Phiếu Mượn Sách";
+            pnlBody.AutoScroll = false;
+            pnlBody.Padding = new Padding(12, 8, 12, 8);
             BuildUI();
+            _ = LoadBookStatus();
         }
 
         private void BuildUI()
         {
-            var pnlGuide = new Panel
+            var tlpMain = new TableLayoutPanel
             {
-                Dock = DockStyle.Top,
-                Height = 85,
-                BackColor = Color.FromArgb(254, 243, 199),
-                Padding = new Padding(10)
-            };
-            pnlGuide.Controls.Add(new Label
-            {
-                Text = "📌 Hướng Dẫn Nghiệp Vụ Deadlock:\n1. Bấm nút [Thực Thi T2] ngay sau khi T1 vừa chạy.\n2. T2 chiếm giữ khóa CS002 và chờ 5s trước khi đòi tiếp CS001.\n3. Quan sát: 1 trong 2 giao tác sẽ thành công, giao tác còn lại bị SQL Server Rollback do Deadlock!",
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.FromArgb(146, 64, 14)
-            });
-            pnlBody.Controls.Add(pnlGuide);
+                ColumnCount = 1,
+                RowCount = 6,
+                Padding = new Padding(0)
+            };
+            tlpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
+            // 1. Thông tin độc giả và phiếu mượn (Cao 96px, rộng rãi thoải mái)
+            var grpReader = new GroupBox
+            {
+                Text = "📋 THÔNG TIN ĐỘC GIẢ VÀ PHIẾU MƯỢN",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Padding = new Padding(12, 22, 12, 8)
+            };
+            var lblReaderInfo = new Label
+            {
+                Text = "• Độc giả: DG003 - Hoàng Thị Mai (Giảng viên | Thẻ: Còn hạn)\n• Mã phiếu: PM2_AUTO   |   Hạn trả: 14 ngày   |   Nhân viên: NV001",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(30, 41, 59)
+            };
+            grpReader.Controls.Add(lblReaderInfo);
+
+            // 2. Máy quét mã vạch và danh sách sách (Cao 136px)
+            var grpScanner = new GroupBox
+            {
+                Text = "📷 QUÉT MÃ VẠCH SÁCH MƯỢN (BARCODE SCANNER)",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Padding = new Padding(12, 22, 12, 8)
+            };
+            var tlpScanner = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 3,
+                Padding = new Padding(0)
+            };
+            tlpScanner.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
+            tlpScanner.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tlpScanner.RowStyles.Add(new RowStyle(SizeType.Absolute, 26F));
+
+            var lblPrompt = new Label
+            {
+                Text = "Thứ tự quét mã vạch các cuốn sách (quét ngược lại so với Quầy 1):",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 8.8F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
+            };
+            txtBooks = new TextBox
+            {
+                Text = "CS004, CS001",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(180, 83, 9)
+            };
+            var lblRecognized = new Label
+            {
+                Text = "Sách nhận diện: [CS004] Đắc Nhân Tâm  |  [CS001] Clean Code",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 8.8F, FontStyle.Italic),
+                ForeColor = Color.FromArgb(100, 116, 139)
+            };
+
+            tlpScanner.Controls.Add(lblPrompt, 0, 0);
+            tlpScanner.Controls.Add(txtBooks, 0, 1);
+            tlpScanner.Controls.Add(lblRecognized, 0, 2);
+            grpScanner.Controls.Add(tlpScanner);
+
+            // 3. Nút xác nhận lập phiếu mượn (Cao 90px)
             var grpAction = new GroupBox
             {
-                Text = "⚡ Tiến Trình Giao Tác T2",
-                Dock = DockStyle.Top,
-                Height = 140,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Text = "⚡ THAO TÁC NGHIỆP VỤ",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Padding = new Padding(12, 22, 12, 10)
             };
-
-            btnT2 = new Button
+            btnConfirm = new Button
             {
-                Text = "⚡ 2. THỰC THI GIAO TÁC T2 (Khóa CS002 -> Đòi CS001)",
-                Location = new Point(20, 40),
-                Size = new Size(490, 55),
-                BackColor = Color.FromArgb(217, 119, 6),
+                Text = "📝 XÁC NHẬN LẬP PHIẾU MƯỢN (sp_LapPhieuMuon_Deadlock)",
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(220, 38, 38),
                 ForeColor = Color.White,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand
             };
-            btnT2.FlatAppearance.BorderSize = 0;
-            btnT2.Click += async (s, e) => await ExecuteT2();
+            btnConfirm.FlatAppearance.BorderSize = 0;
+            btnConfirm.Click += async (s, e) => await ExecuteT2();
+            grpAction.Controls.Add(btnConfirm);
 
-            grpAction.Controls.Add(btnT2);
-            pnlBody.Controls.Add(grpAction);
+            // 4. Bảng giám sát trạng thái sách Realtime (Cao 106px)
+            var grpStatus = new GroupBox
+            {
+                Text = "📊 TRẠNG THÁI SÁCH TRONG KHO (REALTIME MONITOR)",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Padding = new Padding(12, 22, 12, 8)
+            };
+            lblBookStatus = new Label
+            {
+                Text = "Đang đồng bộ trạng thái sách từ CSDL...",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(2, 132, 199)
+            };
+            grpStatus.Controls.Add(lblBookStatus);
+            
+            // 5. Panel hướng dẫn thêm (Cao 48px)
+            var pnlHint = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(254, 243, 199),
+                Padding = new Padding(10, 8, 10, 8)
+            };
+            var lblHint = new Label
+            {
+                Text = "💡 Hướng dẫn: Bấm đồng thời Quầy 1 và Quầy 2 để kích hoạt Deadlock (Lỗi 1205).",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(146, 64, 14),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            pnlHint.Controls.Add(lblHint);
 
-            grpAction.BringToFront();
-            pnlGuide.BringToFront();
+            // Cấu hình chiều cao cho các dòng trong TableLayoutPanel:
+            tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 96F));   // grpReader
+            tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 136F));  // grpScanner
+            tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 90F));   // grpAction
+            tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 106F));  // grpStatus
+            tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));   // pnlHint
+            tlpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));   // Flexible bottom buffer
+
+            tlpMain.Controls.Add(grpReader, 0, 0);
+            tlpMain.Controls.Add(grpScanner, 0, 1);
+            tlpMain.Controls.Add(grpAction, 0, 2);
+            tlpMain.Controls.Add(grpStatus, 0, 3);
+            tlpMain.Controls.Add(pnlHint, 0, 4);
+
+            pnlBody.Controls.Add(tlpMain);
+        }
+
+        public async Task LoadBookStatus()
+        {
+            try
+            {
+                var dt = await DatabaseHelper.ExecuteQueryAsync(
+                    "SELECT cs.MaCuonSach, s.TenSach, cs.TrangThai, cs.TinhTrang FROM CuonSach cs JOIN Sach s ON cs.MaSach = s.MaSach WHERE cs.MaCuonSach IN ('CS001', 'CS004') ORDER BY cs.MaCuonSach ASC");
+                if (dt.Rows.Count > 0)
+                {
+                    var lines = new List<string>();
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        lines.Add($"• [{row["MaCuonSach"]}] {row["TenSach"]}: {row["TrangThai"]} ({row["TinhTrang"]})");
+                    }
+                    lines.Add("🔄 Tự động đồng bộ 100% qua Database Trigger & Stored Procedure");
+                    lblBookStatus.Text = string.Join("\n", lines);
+                }
+            }
+            catch
+            {
+                lblBookStatus.Text = "Không thể lấy trạng thái sách từ CSDL.";
+            }
         }
 
         private async Task ExecuteT2()
         {
-            btnT2.Enabled = false;
-            StartCountdown(5, "[T2] Đang giữ khóa CS002");
-            SetAlert("Giao Tác T2 Đang Chạy", "Đã khóa CS002, đang chờ 5s trước khi yêu cầu khóa tiếp CS001...", AlertType.Warning);
+            var books = txtBooks.Text.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(b => b.Trim()).ToList();
+            if (books.Count < 2)
+            {
+                MessageBox.Show("Vui lòng nhập ít nhất 2 mã sách để thực nghiệm (vd: CS004, CS001).", "Lỗi Nhập Liệu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            string book1 = books[0];
+
+            btnConfirm.Enabled = false;
+            StartCountdown(5, $"Đang quét mã & xin khóa cuốn {book1}...");
+            SetAlert("Đang Lập Phiếu Mượn", $"Đang quét mã {book1}, xin chờ 5s để mô phỏng hệ thống xử lý...", AlertType.Warning);
 
             try
             {
-                var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_Demo_Deadlock_T2");
+                var dtBooks = new System.Data.DataTable();
+                dtBooks.Columns.Add("MaCuonSach", typeof(string));
+                foreach (var b in books)
+                {
+                    dtBooks.Rows.Add(b);
+                }
+
+                var pars = new SqlParameter[]
+                {
+                    new SqlParameter("@p_MaPhieuMuon", "PM2_" + DateTime.Now.ToString("HHmmss")),
+                    new SqlParameter("@p_MaDG", "DG003"),
+                    new SqlParameter("@p_MaNV", "NV001"),
+                    new SqlParameter("@p_NgayHenTra", DateTime.Now.AddDays(14)),
+                    new SqlParameter
+                    {
+                        ParameterName = "@p_DanhSachCuonSach",
+                        SqlDbType = System.Data.SqlDbType.Structured,
+                        TypeName = "dbo.DanhSachCuonSachType",
+                        Value = dtBooks
+                    },
+                    new SqlParameter("@p_DelayGiay", 5)
+                };
+
+                var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_LapPhieuMuon_Deadlock", pars);
                 StopCountdown();
-                if (dt.Rows.Count > 0)
+
+                if (dt != null && dt.Rows.Count > 0)
                 {
                     string msg = dt.Rows[0]["ThongBao"]?.ToString() ?? "";
                     int code = Convert.ToInt32(dt.Rows[0]["ErrorCode"]);
                     if (code == 1205)
                     {
-                        SetAlert("Xung Đột Deadlock (Mã lỗi 1205)", "Giao tác T2 bị SQL Server chọn làm nạn nhân (Deadlock Victim) và đã tự động Rollback!", AlertType.Danger);
-                        MessageBox.Show("🚨 GIAO DỊCH T2 BỊ HỦY DO DEADLOCK (LỖI 1205)!\n\nSQL Server phát hiện chu trình bế tắc tài nguyên giữa T1 và T2. Giao dịch T2 đã được tự động Rollback để giải phóng khóa.\n\nVui lòng thử lại thao tác.", "Xung Đột Bế Tắc (Deadlock Victim)", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                        SetAlert("Xung Đột Deadlock (Lỗi 1205)", "Giao tác Quầy 2 bị SQL Server chọn làm nạn nhân (Deadlock Victim) và tự động Rollback!", AlertType.Danger);
+                        MessageBox.Show("🚨 GIAO DỊCH QUẦY 2 BỊ HỦY DO DEADLOCK (LỖI 1205)!\n\nSQL Server phát hiện chu trình bế tắc tài nguyên (Circular Wait) giữa Quầy 1 và Quầy 2:\n• Quầy 1 giữ khóa CS001 và chờ CS004\n• Quầy 2 giữ khóa CS004 và chờ CS001\n\nSQL Server đã tự động ROLLBACK giao dịch của Quầy 2 để giải phóng tài nguyên. Dữ liệu sách được bảo toàn an toàn!", "Xung Đột Bế Tắc (Deadlock Victim)", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    }
+                    else if (code != 0)
+                    {
+                        SetAlert("Lỗi Nghiệp Vụ", msg, AlertType.Danger);
+                        MessageBox.Show("Thông báo: " + msg, "Lỗi Giao Tác", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                     else
                     {
-                        SetAlert("Giao Dịch T2 Thành Công", msg, AlertType.Success);
-                        MessageBox.Show("Giao dịch T2 đã hoàn thành thành công!", "Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        SetAlert("Lập Phiếu Mượn Thành Công", msg, AlertType.Success);
+                        MessageBox.Show("Giao dịch Quầy 2 đã hoàn thành thành công!\nPhiếu mượn đã được ghi nhận vào hệ thống.", "Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
-                OnDataChanged?.Invoke();
+                else
+                {
+                    SetAlert("Lập Phiếu Mượn Thành Công", "Đã cập nhật trạng thái các cuốn sách.", AlertType.Success);
+                    MessageBox.Show("Giao dịch Quầy 2 đã hoàn thành thành công!", "Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (SqlException ex) when (ex.Number == 1205)
+            {
+                StopCountdown();
+                SetAlert("Xung Đột Deadlock (Lỗi 1205)", "Giao tác Quầy 2 bị SQL Server chọn làm nạn nhân (Deadlock Victim) và tự động Rollback!", AlertType.Danger);
+                MessageBox.Show("🚨 GIAO DỊCH QUẦY 2 BỊ HỦY DO DEADLOCK (LỖI 1205)!\n\nSQL Server phát hiện chu trình bế tắc tài nguyên (Circular Wait) giữa Quầy 1 và Quầy 2:\n• Quầy 1 giữ khóa CS001 và chờ CS004\n• Quầy 2 giữ khóa CS004 và chờ CS001\n\nSQL Server đã tự động ROLLBACK giao dịch của Quầy 2 để giải phóng tài nguyên. Dữ liệu sách được bảo toàn an toàn!", "Xung Đột Bế Tắc (Deadlock Victim)", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
             catch (Exception ex)
             {
@@ -1600,7 +1960,9 @@ namespace ProjectHEQTCSDL.FormUI
             }
             finally
             {
-                btnT2.Enabled = true;
+                btnConfirm.Enabled = true;
+                await LoadBookStatus();
+                OnDataChanged?.Invoke();
             }
         }
     }

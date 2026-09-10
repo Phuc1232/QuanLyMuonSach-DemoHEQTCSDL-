@@ -9,6 +9,13 @@ Huong-dan-demo-truong-trang.md
 **/Chuong_3_1.pdf
 **/Chuong_3_2.pdf
 **/Chuong_3_3.pdf
+**/PhanTich_Concurrency_DuAn.txt
+**/HuongDan_PhongNgua_Deadlock.md
+**/Deadlock_Procedures_New.sql
+**/sp_LapPhieuMuon_Deadlock.sql
+**/TongHop_KienThuc_DirtyRead.md
+*.agents
+
 # User-specific files
 *.rsuser
 *.suo

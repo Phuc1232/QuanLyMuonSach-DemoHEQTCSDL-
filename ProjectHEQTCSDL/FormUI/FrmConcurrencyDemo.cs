@@ -90,7 +90,8 @@ namespace ProjectHEQTCSDL.FormUI
                 Dock = DockStyle.Top,
                 Height = 65,
                 BackColor = Color.FromArgb(241, 245, 249),
-                Padding = new Padding(15, 12, 15, 12)
+                Padding = new Padding(15, 12, 15, 12),
+                AutoScroll = true
             };
 
             var lblSelect = new Label
@@ -347,17 +348,17 @@ namespace ProjectHEQTCSDL.FormUI
                     break;
 
                 case 4:
-                    lblScenarioSummary.Text = "📌 Kịch Bản 5: Deadlock (Bế tắc tương hỗ) - 2 giao tác khóa chéo tài nguyên CS001 và CS002 của nhau.";
-                    lblDbTitle.Text = "Bảng CuonSach (Quan sát CS001 và CS002):";
+                    lblScenarioSummary.Text = "📌 Kịch Bản 5: Deadlock (Bế tắc chu trình) - 2 giao tác mượn sách khóa chéo tài nguyên CS001 (Clean Code) và CS004 (Đắc Nhân Tâm).";
+                    lblDbTitle.Text = "Bảng CuonSach (Quan sát CS001 và CS004):";
                     txtExplanation.Text =
                         "=== 5. HIỆN TƯỢNG DEADLOCK (BẾ TẮC TƯƠNG HỖ) ===\r\n\r\n" +
                         "• Bản chất: Giao tác T1 nắm giữ khóa tài nguyên A và chờ khóa tài nguyên B do T2 nắm giữ. Đồng thời T2 nắm giữ tài nguyên B và chờ khóa tài nguyên A do T1 nắm giữ. Cả hai chờ đợi vô tận lẫn nhau.\r\n\r\n" +
                         "• Kịch bản mô phỏng:\r\n" +
-                        "  - T1: UPDATE CS001 -> Giữ X-Lock CS001 -> Chờ 5s -> Đòi UPDATE CS002.\r\n" +
-                        "  - T2: UPDATE CS002 -> Giữ X-Lock CS002 -> Chờ 5s -> Đòi UPDATE CS001.\r\n" +
-                        "  - Cơ chế phát hiện của SQL Server: Deadlock Monitor định kỳ quét đồ thị chờ (Wait-For Graph). Khi phát hiện chu trình, SQL Server tự động chọn 1 giao tác có chi phí rollback thấp hơn làm NẠN NHÂN (Deadlock Victim - Error 1205) và Rollback giao tác đó, cho phép giao tác còn lại tiếp tục thành công!\r\n\r\n" +
+                        "  - Quầy 1 (DG002): Quét CS001 -> Giữ UPDLOCK CS001 -> Chờ 5s -> Đòi khóa CS004.\r\n" +
+                        "  - Quầy 2 (DG003): Quét CS004 -> Giữ UPDLOCK CS004 -> Chờ 5s -> Đòi khóa CS001.\r\n" +
+                        "  - Cơ chế phát hiện của SQL Server: Deadlock Monitor định kỳ quét đồ thị chờ (Wait-For Graph). Khi phát hiện chu trình (Circular Wait), SQL Server tự động chọn 1 giao tác làm NẠN NHÂN (Deadlock Victim - Error 1205) và Rollback giao tác đó, cho phép giao tác còn lại tiếp tục thành công!\r\n\r\n" +
                         "• Giải pháp phòng tránh Deadlock:\r\n" +
-                        "  1. Chuẩn hóa thứ tự truy xuất tài nguyên (luôn khóa CS001 trước, rồi mới đến CS002 trong mọi giao dịch).\r\n" +
+                        "  1. Chuẩn hóa thứ tự truy xuất tài nguyên (Ordering Protocol: luôn khóa theo thứ tự MaCuonSach ASC trong mọi giao dịch).\r\n" +
                         "  2. Rút ngắn thời gian giao dịch, không để giao tác mở quá lâu.\r\n" +
                         "  3. Bắt lỗi 1205 ở tầng ứng dụng và thực hiện cơ chế Retry tự động.";
                     break;
@@ -370,14 +371,20 @@ namespace ProjectHEQTCSDL.FormUI
         {
             string query = "";
             int scenario = cboScenario.SelectedIndex;
-            if (scenario == 0 || scenario == 1)
+            if (scenario == 0)
                 query = "SELECT MaCuonSach, TrangThai, TinhTrang, ViTriKe FROM CuonSach WITH (NOLOCK) WHERE MaCuonSach IN ('CS001', 'CS002', 'CS003')";
+            else if (scenario == 1) // Cập nhật cho Dirty Read: Kết hợp View để thấy rõ ai đang mượn
+                query = @"
+                    SELECT c.MaCuonSach, c.TrangThai, ISNULL(v.MaDG, '') AS NguoiMuon, ISNULL(v.MaPhieuMuon, '') AS PhieuMuon
+                    FROM CuonSach c WITH (NOLOCK)
+                    LEFT JOIN View_LichSuMuon_DocGia v WITH (NOLOCK) ON c.MaCuonSach = v.MaCuonSach AND v.TrangThai = 'DangMuon'
+                    WHERE c.MaCuonSach IN ('CS001', 'CS002', 'CS003')";
             else if (scenario == 2)
-                query = "SELECT c.MaCuonSach, s.TenSach, c.TrangThai, c.TinhTrang FROM CuonSach c WITH (NOLOCK) JOIN Sach s WITH (NOLOCK) ON c.MaSach = s.MaSach WHERE c.MaSach = 'S001'";
+                query = "SELECT c.MaCuonSach, s.TenSach, c.TrangThai, c.TinhTrang, c.ViTriKe FROM CuonSach c WITH (NOLOCK) JOIN Sach s WITH (NOLOCK) ON c.MaSach = s.MaSach WHERE c.MaSach = 'S001'";
             else if (scenario == 3)
-                query = "SELECT MaPhieuPhat, MaPhieuMuon, LyDoPhat, SoTienPhat, NgayLap, TrangThaiThanhToan FROM PhieuPhat WITH (NOLOCK)";
+                query = "SELECT MaPhieuPhat, MaPhieuMuon, TenDocGia, LyDoPhat, SoTienPhat, NgayLap, TrangThaiThanhToan FROM View_DanhSachPhieuPhat_ChiTiet WITH (NOLOCK) ORDER BY NgayLap DESC, MaPhieuPhat DESC";
             else if (scenario == 4)
-                query = "SELECT c.MaCuonSach, s.TenSach, c.TinhTrang, c.TrangThai FROM CuonSach c WITH (NOLOCK) JOIN Sach s WITH (NOLOCK) ON c.MaSach = s.MaSach WHERE c.MaCuonSach IN ('CS001', 'CS002')";
+                query = "SELECT c.MaCuonSach, s.TenSach, c.TinhTrang, c.TrangThai FROM CuonSach c WITH (NOLOCK) JOIN Sach s WITH (NOLOCK) ON c.MaSach = s.MaSach WHERE c.MaCuonSach IN ('CS001', 'CS004')";
 
             if (!string.IsNullOrEmpty(query))
             {
@@ -398,6 +405,39 @@ namespace ProjectHEQTCSDL.FormUI
             try
             {
                 var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_ResetDuLieuDemoTuongTranh");
+                
+                // Tự động thiết lập riêng theo từng kịch bản
+                int scenario = cboScenario.SelectedIndex;
+                if (scenario == 0 || scenario == 1)
+                {
+                    string setupSql = @"
+                        IF NOT EXISTS (SELECT 1 FROM PhieuMuon WHERE MaPhieuMuon = 'PM_DEMO1')
+                            INSERT INTO PhieuMuon (MaPhieuMuon, MaDG, MaNV, NgayMuon, NgayHenTra, TrangThai) VALUES ('PM_DEMO1', 'DG001', 'NV001', GETDATE(), DATEADD(DAY, 14, GETDATE()), 'DangMuon');
+                        
+                        IF NOT EXISTS (SELECT 1 FROM CT_PhieuMuon WHERE MaPhieuMuon = 'PM_DEMO1' AND MaCuonSach = 'CS001')
+                            INSERT INTO CT_PhieuMuon (MaPhieuMuon, MaCuonSach, TinhTrangSachKhiTra) VALUES ('PM_DEMO1', 'CS001', 'ChuaTra');
+                            
+                        UPDATE CuonSach SET TrangThai = 'DangMuon' WHERE MaCuonSach = 'CS001';
+                    ";
+                    await Task.Run(() => DatabaseHelper.ExecuteQuery(setupSql));
+                }
+                else if (scenario == 2)
+                {
+                    // Non-Repeatable Read: Đảm bảo cả 3 cuốn của S001 đều có sẵn
+                    string setupSql = @"
+                        UPDATE CuonSach SET TrangThai = 'CoSan', TinhTrang = 'ConTot' WHERE MaSach = 'S001';
+                    ";
+                    await Task.Run(() => DatabaseHelper.ExecuteQuery(setupSql));
+                }
+                else if (scenario == 3)
+                {
+                    // Phantom Read: Xóa bản ghi bóng ma PP999 nếu có
+                    string setupSql = @"
+                        DELETE FROM PhieuPhat WHERE MaPhieuPhat = 'PP999';
+                    ";
+                    await Task.Run(() => DatabaseHelper.ExecuteQuery(setupSql));
+                }
+
                 string msg = dt.Rows.Count > 0 ? (dt.Rows[0]["ThongBao"]?.ToString() ?? "Đã khôi phục CSDL chuẩn!") : "Đã reset!";
                 MessageBox.Show(msg, "Khôi Phục Dữ Liệu Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 RefreshDatabaseInspector();
@@ -405,6 +445,8 @@ namespace ProjectHEQTCSDL.FormUI
                 // Also notify open child windows
                 if (activeWin1 is FrmLostUpdateWin1 lu1) lu1.LoadCurrentBookStatus();
                 if (activeWin2 is FrmLostUpdateWin2 lu2) lu2.LoadCurrentBookStatus();
+                if (activeWin1 is FrmDeadlockWin1 dl1) _ = dl1.LoadBookStatus();
+                if (activeWin2 is FrmDeadlockWin2 dl2) _ = dl2.LoadBookStatus();
             }
             catch (Exception ex)
             {
@@ -453,8 +495,7 @@ namespace ProjectHEQTCSDL.FormUI
             // Position side by side on screen
             var screenArea = Screen.FromControl(this).WorkingArea;
             int winWidth = (screenArea.Width / 2) - 15;
-            
-            int winHeight = screenArea.Height - 40;
+            int winHeight = Math.Min(screenArea.Height - 40, 740);
 
             win1.StartPosition = FormStartPosition.Manual;
             win1.Location = new Point(screenArea.X + 10, screenArea.Y + 20);
