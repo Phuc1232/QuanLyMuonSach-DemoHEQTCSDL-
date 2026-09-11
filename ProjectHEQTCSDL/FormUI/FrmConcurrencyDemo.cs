@@ -13,12 +13,10 @@ namespace ProjectHEQTCSDL.FormUI
         // Controls
         private ComboBox cboScenario = null!;
         private Button btnLaunchWindows = null!;
-        private Button btnRefreshDB = null!;
+        private Button btnResetData = null!;
 
-        private DataGridView dgvDBState = null!;
         private TextBox txtExplanation = null!;
         private Label lblScenarioSummary = null!;
-        private Label lblDbTitle = null!;
 
         // References to Active Sub-Windows
         private Form? activeWin1 = null;
@@ -30,13 +28,12 @@ namespace ProjectHEQTCSDL.FormUI
             this.Load += (s, e) =>
             {
                 cboScenario.SelectedIndex = 0;
-                RefreshDatabaseInspector();
             };
         }
 
         private void InitializeComponent()
         {
-            this.Text = "TRUNG TÂM ĐIỀU KHIỂN & GIÁM SÁT CSDL - DEMO TƯƠNG TRANH (HQTCSDL)";
+            this.Text = "TRUNG TÂM ĐIỀU KHIỂN & PHÂN TÍCH TƯƠNG TRANH CSDL";
             this.Size = new Size(1100, 720);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = Color.FromArgb(248, 250, 252);
@@ -54,7 +51,7 @@ namespace ProjectHEQTCSDL.FormUI
 
             var lblTitle = new Label
             {
-                Text = "TRUNG TÂM ĐIỀU KHIỂN & GIÁM SÁT CSDL ĐA LUỒNG",
+                Text = "TRUNG TÂM ĐIỀU KHIỂN & PHÂN TÍCH TƯƠNG TRANH CSDL",
                 Font = new Font("Segoe UI", 13F, FontStyle.Bold),
                 ForeColor = Color.White,
                 Dock = DockStyle.Top,
@@ -63,7 +60,7 @@ namespace ProjectHEQTCSDL.FormUI
 
             var lblSub = new Label
             {
-                Text = "Mô hình 2 Cửa Sổ Rời Độc Lập - Đóng gói 100% Stored Procedures & Transaction trong SQL Server",
+                Text = "Mô hình 2 Cửa Sổ Nghiệp Vụ Độc Lập - Thực thi 100% Stored Procedures & Transaction trong SQL Server",
                 Font = new Font("Segoe UI", 9F, FontStyle.Italic),
                 ForeColor = Color.FromArgb(148, 163, 184),
                 Dock = DockStyle.Bottom,
@@ -113,7 +110,7 @@ namespace ProjectHEQTCSDL.FormUI
             {
                 Text = "MỞ 2 CỬA SỔ NGHIỆP VỤ",
                 Location = new Point(490, 14),
-                Width = 230,
+                Width = 240,
                 Height = 36,
                 BackColor = Color.FromArgb(37, 99, 235),
                 ForeColor = Color.White,
@@ -124,11 +121,11 @@ namespace ProjectHEQTCSDL.FormUI
             btnLaunchWindows.FlatAppearance.BorderSize = 0;
             btnLaunchWindows.Click += (s, e) => LaunchSubWindows();
 
-            btnRefreshDB = new Button
+            btnResetData = new Button
             {
-                Text = "TẢI LẠI DỮ LIỆU CSDL",
-                Location = new Point(735, 14),
-                Width = 195,
+                Text = "KHÔI PHỤC DỮ LIỆU GỐC (RESET)",
+                Location = new Point(745, 14),
+                Width = 250,
                 Height = 36,
                 BackColor = Color.FromArgb(13, 148, 136),
                 ForeColor = Color.White,
@@ -136,10 +133,26 @@ namespace ProjectHEQTCSDL.FormUI
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
-            btnRefreshDB.FlatAppearance.BorderSize = 0;
-            btnRefreshDB.Click += (s, e) => RefreshDatabaseInspector();
+            btnResetData.FlatAppearance.BorderSize = 0;
+            btnResetData.Click += async (s, e) =>
+            {
+                try
+                {
+                    btnResetData.Enabled = false;
+                    await DatabaseHelper.ExecuteProcedureAsync("sp_ResetDuLieuDemoTuongTranh");
+                    MessageBox.Show("Đã khôi phục dữ liệu demo về trạng thái chuẩn ban đầu thành công!", "Thông Báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Lỗi khi reset dữ liệu: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                finally
+                {
+                    btnResetData.Enabled = true;
+                }
+            };
 
-            pnlToolbar.Controls.AddRange(new Control[] { lblSelect, cboScenario, btnLaunchWindows, btnRefreshDB });
+            pnlToolbar.Controls.AddRange(new Control[] { lblSelect, cboScenario, btnLaunchWindows, btnResetData });
             this.Controls.Add(pnlToolbar);
 
             // 3. SCENARIO SUMMARY BANNER
@@ -161,59 +174,20 @@ namespace ProjectHEQTCSDL.FormUI
             pnlSummary.Controls.Add(lblScenarioSummary);
             this.Controls.Add(pnlSummary);
 
-            // 4. MAIN WORKSPACE (Split between DataGridView Inspector & Theoretical Explanation)
-            var pnlMain = new TableLayoutPanel
+            // 4. MAIN WORKSPACE (Bảng Phân Tích & Cơ Chế Khóa CSDL Toàn Màn Hình)
+            var pnlMain = new Panel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 1,
                 Padding = new Padding(15)
             };
-            pnlMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
-            pnlMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
 
-            // Left: DB Inspector
-            var grpDB = new GroupBox
-            {
-                Text = "BẢNG GIÁM SÁT CSDL TRỰC TIẾP (REAL-TIME DB INSPECTOR)",
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(15, 23, 42),
-                Padding = new Padding(10)
-            };
-
-            lblDbTitle = new Label
-            {
-                Text = "Dữ liệu bảng CuonSach:",
-                Dock = DockStyle.Top,
-                Height = 25,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(100, 116, 139)
-            };
-
-            dgvDBState = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                BackgroundColor = Color.White,
-                RowHeadersVisible = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                Font = new Font("Segoe UI", 9F)
-            };
-
-            grpDB.Controls.Add(dgvDBState);
-            grpDB.Controls.Add(lblDbTitle);
-            pnlMain.Controls.Add(grpDB, 0, 0);
-
-            // Right: Explanation
             var grpExp = new GroupBox
             {
-                Text = "PHÂN TÍCH HIỆN TƯỢNG & CƠ CHẾ KHÓA TRONG CSDL",
+                Text = "PHÂN TÍCH HIỆN TƯỢNG VÀ CƠ CHẾ KHÓA TRONG CSDL (ACID & ISOLATION LEVELS)",
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(180, 83, 9),
-                Padding = new Padding(10)
+                Padding = new Padding(15)
             };
 
             txtExplanation = new TextBox
@@ -224,14 +198,12 @@ namespace ProjectHEQTCSDL.FormUI
                 ScrollBars = ScrollBars.Vertical,
                 BackColor = Color.FromArgb(254, 252, 232),
                 ForeColor = Color.FromArgb(67, 20, 7),
-                Font = new Font("Segoe UI", 9.5F)
+                Font = new Font("Segoe UI", 10.5F)
             };
             grpExp.Controls.Add(txtExplanation);
-            pnlMain.Controls.Add(grpExp, 1, 0);
+            pnlMain.Controls.Add(grpExp);
 
             this.Controls.Add(pnlMain);
-
-            // Docking order
             pnlMain.BringToFront();
         }
 
@@ -257,13 +229,12 @@ namespace ProjectHEQTCSDL.FormUI
             switch (idx)
             {
                 case 0:
-                    lblScenarioSummary.Text = "Kịch Bản 1: Lost Update (Mất bản cập nhật) - 2 Thủ thư cùng sửa tình trạng sách CS001, người lưu sau ghi đè người lưu trước.";
-                    lblDbTitle.Text = "Bảng CuonSach (Quan sát cột TinhTrang của mã CS001):";
+                    lblScenarioSummary.Text = "Kịch Bản 1: Lost Update (Mất bản cập nhật) - 2 Thủ thư cùng sửa tình trạng sách, người lưu sau ghi đè người lưu trước.";
                     txtExplanation.Text =
                         "=== 1. HIỆN TƯỢNG LOST UPDATE ===\r\n\r\n" +
                         "• Bản chất: Hai giao tác T1 và T2 cùng đọc 1 bản ghi với dữ liệu ban đầu. Sau đó cả hai cùng sửa và ghi lại vào CSDL. Giao tác ghi sau sẽ ghi đè lên kết quả của giao tác ghi trước mà không hay biết, làm mất cập nhật của giao tác trước.\r\n\r\n" +
                         "• Kịch bản mô phỏng:\r\n" +
-                        "  - Ban đầu CS001 có TinhTrang = 'ConTot'.\r\n" +
+                        "  - Ban đầu sách có TinhTrang = 'ConTot'.\r\n" +
                         "  - Thủ thư B phát hiện 'Mất đĩa CD kèm theo' và bấm Lưu vào CSDL.\r\n" +
                         "  - Thủ thư A chọn 'Rách bìa ngoài' và bấm Lưu sau.\r\n" +
                         "  - Kết quả: Tình trạng 'Mất đĩa CD' của Thủ thư B biến mất hoàn toàn, bị thay thế bằng 'Rách bìa ngoài' của Thủ thư A!\r\n\r\n" +
@@ -275,33 +246,30 @@ namespace ProjectHEQTCSDL.FormUI
 
                 case 1:
                     lblScenarioSummary.Text = "Kịch Bản 2: Dirty Read (Đọc rác) - Độc giả tra cứu sách với READ UNCOMMITTED khi Thủ thư đang làm thủ tục trả chưa hoàn tất.";
-                    lblDbTitle.Text = "Bảng CuonSach (Quan sát cột TrangThai của mã CS001):";
                     txtExplanation.Text =
                         "=== 2. HIỆN TƯỢNG DIRTY READ (ĐỌC DỮ LIỆU RÁC) ===\r\n\r\n" +
                         "• Bản chất: Giao tác T1 sửa dữ liệu nhưng CHƯA COMMIT. Giao tác T2 đọc được dữ liệu này (do dùng mức cô lập READ UNCOMMITTED). Sau đó giao tác T1 bị ROLLBACK (hủy bỏ). Dữ liệu mà T2 vừa đọc trở thành dữ liệu rác không hề tồn tại trong CSDL.\r\n\r\n" +
                         "• Kịch bản mô phỏng:\r\n" +
-                        "  - Ban đầu CS001 có TrangThai = 'DangMuon'.\r\n" +
+                        "  - Ban đầu sách có TrangThai = 'DangMuon'.\r\n" +
                         "  - Thủ thư nhận trả sách: CSDL tạm đổi TrangThai = 'CoSan' và giữ mở giao tác 10 giây (chờ khách đóng tiền phạt).\r\n" +
                         "  - Trong 10s này, Độc giả tra cứu trực tuyến thấy sách 'CoSan' và hào hứng đến mượn.\r\n" +
-                        "  - Hết 10s: Khách không đủ tiền phạt, Thủ thư Rollback -> CS001 trở về 'DangMuon'.\r\n" +
+                        "  - Hết 10s: Khách không đủ tiền phạt, Thủ thư Rollback -> Sách trở về 'DangMuon'.\r\n" +
                         "  - Kết quả: Trạng thái 'CoSan' mà Độc giả thấy là DỮ LIỆU RÁC!\r\n\r\n" +
                         "• Cơ chế khóa & Mức cô lập:\r\n" +
-                        "  - Thủ thư nắm giữ Exclusive Lock (X-Lock) trên dòng CS001.\r\n" +
+                        "  - Thủ thư nắm giữ Exclusive Lock (X-Lock) trên dòng CuonSach.\r\n" +
                         "  - Độc giả dùng mức READ UNCOMMITTED (hoặc gợi ý WITH (NOLOCK)) nên bỏ qua X-Lock và đọc thẳng dữ liệu chưa chốt.\r\n" +
                         "  - Khắc phục: Nâng mức cô lập tra cứu lên READ COMMITTED (mặc định) -> Câu lệnh đọc sẽ chờ X-Lock giải phóng mới được đọc.";
                     break;
 
                 case 2:
                     lblScenarioSummary.Text = "Kịch Bản 3: Non-Repeatable Read (Đọc không nhất quán) - Quản lý kiểm kê kho đọc 2 lần trong 1 Transaction, bị Thủ thư xen ngang cho mượn.";
-                    lblDbTitle.Text = "Bảng CuonSach thuộc Đầu Sách S001 (Lập trình C#):";
                     txtExplanation.Text =
                         "=== 3. HIỆN TƯỢNG NON-REPEATABLE READ ===\r\n\r\n" +
                         "• Bản chất: Trong cùng một giao tác T1, đọc cùng một dữ liệu 2 lần nhưng nhận về 2 kết quả khác nhau, do giao tác T2 xen vào giữa thực hiện UPDATE/DELETE và COMMIT.\r\n\r\n" +
                         "• Kịch bản mô phỏng:\r\n" +
-                        "  - Quản lý chạy SP kiểm kê đầu sách S001 (mức READ COMMITTED). Lần 1 đếm được 3 cuốn 'CoSan'. CSDL giữ Transaction trong 10s.\r\n" +
-                        "  - Trong 10s này, Thủ thư ở quầy cho mượn cuốn CS002 -> Chuyển sang 'DangMuon' và Commit thành công.\r\n" +
-                        "  - Quản lý đếm Lần 2 trong cùng Transaction -> Chỉ còn 2 cuốn 'CoSan'!\r\n" +
-                        "  - Kết quả: Báo cáo kiểm kê của Quản lý bị bất nhất dữ liệu ngay trong 1 phiên làm việc.\r\n\r\n" +
+                        "  - Quản lý chạy SP kiểm kê đầu sách (mức READ COMMITTED). Lần 1 đếm số cuốn 'CoSan'. CSDL giữ Transaction trong 10s.\r\n" +
+                        "  - Trong 10s này, Thủ thư ở quầy cho mượn 1 cuốn -> Chuyển sang 'DangMuon' và Commit thành công.\r\n" +
+                        "  - Quản lý đếm Lần 2 trong cùng Transaction -> Số lượng bị giảm đi 1 cuốn!\r\n\r\n" +
                         "• Cơ chế khóa & Khắc phục:\r\n" +
                         "  - READ COMMITTED chỉ giữ Shared Lock (S-Lock) trong lúc đọc lệnh, đọc xong lập tức nhả S-Lock, cho phép người khác UPDATE.\r\n" +
                         "  - Khắc phục: Nâng mức cô lập lên REPEATABLE READ hoặc SERIALIZABLE. Ở mức này, S-Lock được giữ cho đến khi toàn bộ Transaction kết thúc (COMMIT/ROLLBACK), chặn người khác UPDATE dòng đang đọc.";
@@ -309,22 +277,20 @@ namespace ProjectHEQTCSDL.FormUI
 
                 case 3:
                     lblScenarioSummary.Text = "Kịch Bản 4: Phantom Read (Đọc dòng bóng ma) - Kế toán đếm tổng số phiếu phạt, Thủ thư xen ngang INSERT thêm phiếu phạt mới.";
-                    lblDbTitle.Text = "Bảng PhieuPhat (Quan sát sự xuất hiện của phiếu PP999):";
                     txtExplanation.Text =
                         "=== 4. HIỆN TƯỢNG PHANTOM READ (ĐỌC BÓNG MA) ===\r\n\r\n" +
                         "• Bản chất: Giao tác T1 đọc một tập hợp các dòng thỏa mãn điều kiện WHERE. Giao tác T2 sau đó chèn thêm (INSERT) dòng mới thỏa điều kiện đó và COMMIT. Khi T1 đọc lại tập hợp đó trong cùng giao tác, xuất hiện thêm dòng mới chưa từng thấy (dòng Bóng Ma).\r\n\r\n" +
                         "• Kịch bản mô phỏng:\r\n" +
                         "  - Kế toán chạy SP tổng hợp phiếu phạt (mức REPEATABLE READ). Đếm Lần 1 và giữ giao tác trong 10s.\r\n" +
-                        "  - Trong 10s, Thủ thư lập phiếu phạt mới PP999 (50,000 VNĐ) và Commit thành công.\r\n" +
-                        "  - Kế toán đếm Lần 2 -> Tổng số phiếu tăng thêm 1 bản ghi mới!\r\n\r\n" +
+                        "  - Trong 10s, Thủ thư lập phiếu phạt mới (50,000 VNĐ) và Commit thành công.\r\n" +
+                        "  - Kế toán đếm Lần 2 -> Xuất hiện thêm 1 bản ghi bóng ma mới!\r\n\r\n" +
                         "• Cơ chế khóa & Khắc phục:\r\n" +
                         "  - Mức REPEATABLE READ chỉ khóa các dòng hiện hữu (Row Locks), KHÔNG khóa khoảng trống (Gap / Key Range) giữa các dòng, nên không chặn được lệnh INSERT mới.\r\n" +
                         "  - Khắc phục: Nâng mức cô lập lên SERIALIZABLE. SQL Server sẽ dùng Key-Range Lock (RangeS-S) để khóa toàn bộ dải dữ liệu, ngăn chặn việc chèn bản ghi mới cho đến khi Transaction hoàn tất.";
                     break;
 
                 case 4:
-                    lblScenarioSummary.Text = "Kịch Bản 5: Deadlock (Bế tắc chu trình) - 2 giao tác mượn sách khóa chéo tài nguyên CS001 (Clean Code) và CS004 (Đắc Nhân Tâm).";
-                    lblDbTitle.Text = "Bảng CuonSach (Quan sát CS001 và CS004):";
+                    lblScenarioSummary.Text = "Kịch Bản 5: Deadlock (Bế tắc chu trình) - 2 giao tác mượn sách khóa chéo tài nguyên CS001 và CS004.";
                     txtExplanation.Text =
                         "=== 5. HIỆN TƯỢNG DEADLOCK (BẾ TẮC TƯƠNG HỖ) ===\r\n\r\n" +
                         "• Bản chất: Giao tác T1 nắm giữ khóa tài nguyên A và chờ khóa tài nguyên B do T2 nắm giữ. Đồng thời T2 nắm giữ tài nguyên B và chờ khóa tài nguyên A do T1 nắm giữ. Cả hai chờ đợi vô tận lẫn nhau.\r\n\r\n" +
@@ -338,44 +304,12 @@ namespace ProjectHEQTCSDL.FormUI
                         "  3. Bắt lỗi 1205 ở tầng ứng dụng và thực hiện cơ chế Retry tự động.";
                     break;
             }
-
-            RefreshDatabaseInspector();
         }
 
         public void RefreshDatabaseInspector()
         {
-            string query = "";
-            int scenario = cboScenario.SelectedIndex;
-            if (scenario == 0)
-                query = "SELECT MaCuonSach, TrangThai, TinhTrang, ViTriKe FROM CuonSach WITH (NOLOCK) WHERE MaCuonSach IN ('CS001', 'CS002', 'CS003')";
-            else if (scenario == 1) // Cập nhật cho Dirty Read: Kết hợp View để thấy rõ ai đang mượn
-                query = @"
-                    SELECT c.MaCuonSach, c.TrangThai, ISNULL(v.MaDG, '') AS NguoiMuon, ISNULL(v.MaPhieuMuon, '') AS PhieuMuon
-                    FROM CuonSach c WITH (NOLOCK)
-                    LEFT JOIN View_LichSuMuon_DocGia v WITH (NOLOCK) ON c.MaCuonSach = v.MaCuonSach AND v.TrangThai = 'DangMuon'
-                    WHERE c.MaCuonSach IN ('CS001', 'CS002', 'CS003')";
-            else if (scenario == 2)
-                query = "SELECT c.MaCuonSach, s.TenSach, c.TrangThai, c.TinhTrang, c.ViTriKe FROM CuonSach c WITH (NOLOCK) JOIN Sach s WITH (NOLOCK) ON c.MaSach = s.MaSach WHERE c.MaSach = 'S001'";
-            else if (scenario == 3)
-                query = "SELECT MaPhieuPhat, MaPhieuMuon, TenDocGia, LyDoPhat, SoTienPhat, NgayLap, TrangThaiThanhToan FROM View_DanhSachPhieuPhat_ChiTiet WITH (NOLOCK) ORDER BY NgayLap DESC, MaPhieuPhat DESC";
-            else if (scenario == 4)
-                query = "SELECT c.MaCuonSach, s.TenSach, c.TinhTrang, c.TrangThai FROM CuonSach c WITH (NOLOCK) JOIN Sach s WITH (NOLOCK) ON c.MaSach = s.MaSach WHERE c.MaCuonSach IN ('CS001', 'CS004')";
-
-            if (!string.IsNullOrEmpty(query))
-            {
-                try
-                {
-                    var dt = DatabaseHelper.ExecuteQuery(query);
-                    dgvDBState.DataSource = dt;
-                }
-                catch (Exception ex)
-                {
-                    txtExplanation.AppendText($"\r\n[Lỗi tải CSDL]: {ex.Message}");
-                }
-            }
+            // Bảng giám sát bên ngoài đã được loại bỏ để tập trung vào dữ liệu trực tiếp trên 2 cửa sổ con.
         }
-
-
 
         private void LaunchSubWindows()
         {
@@ -411,9 +345,21 @@ namespace ProjectHEQTCSDL.FormUI
                     return;
             }
 
-            // Hook data changed callbacks to auto-refresh Dashboard
-            win1.OnDataChanged = () => this.Invoke(new Action(RefreshDatabaseInspector));
-            win2.OnDataChanged = () => this.Invoke(new Action(RefreshDatabaseInspector));
+            // Đồng bộ trực tiếp giữa 2 cửa sổ con khi dữ liệu thay đổi
+            win1.OnDataChanged = () =>
+            {
+                if (win2 != null && !win2.IsDisposed)
+                {
+                    try { win2.Invoke(new Action(() => win2.RefreshData())); } catch { }
+                }
+            };
+            win2.OnDataChanged = () =>
+            {
+                if (win1 != null && !win1.IsDisposed)
+                {
+                    try { win1.Invoke(new Action(() => win1.RefreshData())); } catch { }
+                }
+            };
 
             // Position side by side on screen
             var screenArea = Screen.FromControl(this).WorkingArea;

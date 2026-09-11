@@ -16,6 +16,18 @@ namespace ProjectHEQTCSDL.FormUI
         Danger
     }
 
+    public class ConcurrencyComboItem
+    {
+        public string Value { get; set; }
+        public string Text { get; set; }
+        public ConcurrencyComboItem(string value, string text)
+        {
+            Value = value;
+            Text = text;
+        }
+        public override string ToString() => Text;
+    }
+
     // =========================================================================
     // BASE FORM CHO CÁC CỬA SỔ DEMO CON (GIAO DIỆN NGHIỆP VỤ THỰC TẾ)
     // =========================================================================
@@ -39,6 +51,8 @@ namespace ProjectHEQTCSDL.FormUI
 
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         public Action? OnDataChanged { get; set; }
+
+        public virtual void RefreshData() { }
 
         public FrmConcurrencyBase(string roleTitle, string scenarioSubtitle, Color themeColor)
         {
@@ -276,82 +290,109 @@ namespace ProjectHEQTCSDL.FormUI
     // =========================================================================
     public class FrmLostUpdateWin1 : FrmConcurrencyBase
     {
+        private ComboBox cboCuonSach = null!;
         private ComboBox cboTinhTrang = null!;
         private Button btnSave = null!;
+        private Button btnRefreshBook = null!;
         private Label lblCurrentStatus = null!;
 
         public FrmLostUpdateWin1() : base(
             "[Quầy 1] Thủ Thư A",
-            "Cập nhật tình trạng vật lý cuốn sách CS001",
+            "Cập nhật tình trạng bảo quản sách trong kho",
             Color.FromArgb(30, 58, 138))
         {
-            this.Text = "[Quầy 1] Thủ Thư A - Cập Nhật Tình Trạng Sách CS001";
+            this.Text = "[Quầy 1] Thủ Thư A - Cập Nhật Tình Trạng Sách";
+            pnlBody.AutoScroll = false;
             BuildUI();
-            LoadCurrentBookStatus();
+            LoadBooks();
         }
 
         private void BuildUI()
         {
-            // Book Details Form
+            // 1. GroupBox chọn sách và hiển thị trạng thái CSDL
             var grpBook = new GroupBox
             {
-                Text = "Thông Tin Sách Đang Xử Lý",
+                Text = "THÔNG TIN SÁCH ĐANG XỬ LÝ (TỪ CSDL)",
                 Dock = DockStyle.Top,
-                Height = 150,
+                Height = 145,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Padding = new Padding(12, 20, 12, 8)
             };
 
-            var lblBookInfo = new Label
+            var lblSelectBook = new Label
             {
-                Text = "• Mã cuốn sách: CS001\n• Tựa sách: Lập trình C# Cơ bản từ Zero đến Hero\n• Mã đầu sách: S001 | Vị trí kệ: K01",
-                Location = new Point(20, 28),
-                Size = new Size(490, 55),
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(30, 41, 59)
+                Text = "Chọn cuốn sách kiểm tra:",
+                Location = new Point(20, 24),
+                Size = new Size(200, 20),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
             };
+
+            cboCuonSach = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(20, 46),
+                Size = new Size(490, 28),
+                Font = new Font("Segoe UI", 9.5F)
+            };
+            cboCuonSach.SelectedIndexChanged += (s, e) => LoadCurrentBookStatus();
 
             lblCurrentStatus = new Label
             {
                 Text = "Trạng thái trong CSDL: Đang tải...",
-                Location = new Point(20, 90),
-                Size = new Size(490, 30),
+                Location = new Point(20, 84),
+                Size = new Size(350, 24),
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(2, 132, 199)
             };
 
-            grpBook.Controls.AddRange(new Control[] { lblBookInfo, lblCurrentStatus });
-            pnlBody.Controls.Add(grpBook);
+            btnRefreshBook = new Button
+            {
+                Text = "Làm Mới CSDL",
+                Location = new Point(380, 82),
+                Size = new Size(130, 28),
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.8F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnRefreshBook.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnRefreshBook.Click += (s, e) => LoadCurrentBookStatus();
 
-            // Edit Action Box
+            grpBook.Controls.AddRange(new Control[] { lblSelectBook, cboCuonSach, lblCurrentStatus, btnRefreshBook });
+
+            // 2. GroupBox cập nhật tình trạng
             var grpEdit = new GroupBox
             {
-                Text = "Cập Nhật Tình Trạng Cuốn Sách",
+                Text = "CẬP NHẬT TÌNH TRẠNG VẬT LÝ MỚI",
                 Dock = DockStyle.Top,
-                Height = 160,
+                Height = 140,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Padding = new Padding(12, 20, 12, 8)
             };
 
-            var lblSelect = new Label
+            var lblSelectStatus = new Label
             {
                 Text = "Chọn tình trạng ghi nhận:",
-                Location = new Point(20, 30),
-                Size = new Size(200, 22),
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Regular)
+                Location = new Point(20, 24),
+                Size = new Size(200, 20),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
             };
 
             cboTinhTrang = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Location = new Point(20, 55),
-                Size = new Size(490, 30),
+                Location = new Point(20, 46),
+                Size = new Size(490, 28),
                 Font = new Font("Segoe UI", 10F)
             };
             cboTinhTrang.Items.AddRange(new object[] {
                 "Rách bìa ngoài",
                 "Ố vàng trang cuối",
                 "Mất trang phụ lục",
+                "Mất đĩa CD kèm theo",
                 "ConTot"
             });
             cboTinhTrang.SelectedIndex = 0;
@@ -359,7 +400,7 @@ namespace ProjectHEQTCSDL.FormUI
             btnSave = new Button
             {
                 Text = "LƯU TÌNH TRẠNG VÀO CSDL",
-                Location = new Point(20, 98),
+                Location = new Point(20, 82),
                 Size = new Size(490, 42),
                 BackColor = Color.FromArgb(37, 99, 235),
                 ForeColor = Color.White,
@@ -370,23 +411,46 @@ namespace ProjectHEQTCSDL.FormUI
             btnSave.FlatAppearance.BorderSize = 0;
             btnSave.Click += async (s, e) => await SaveBookStatus();
 
-            grpEdit.Controls.AddRange(new Control[] { lblSelect, cboTinhTrang, btnSave });
-            pnlBody.Controls.Add(grpEdit);
+            grpEdit.Controls.AddRange(new Control[] { lblSelectStatus, cboTinhTrang, btnSave });
 
-            grpEdit.BringToFront();
-            grpBook.BringToFront();
+            pnlBody.Controls.Add(grpEdit);
+            pnlBody.Controls.Add(grpBook);
+        }
+
+        private void LoadBooks()
+        {
+            try
+            {
+                var dt = DatabaseHelper.ExecuteQuery(
+                    "SELECT c.MaCuonSach, s.TenSach, c.TinhTrang FROM CuonSach c JOIN View_DanhSachDauSach s ON c.MaSach = s.MaSach ORDER BY c.MaCuonSach ASC");
+                cboCuonSach.Items.Clear();
+                foreach (DataRow r in dt.Rows)
+                {
+                    string code = r["MaCuonSach"].ToString() ?? "";
+                    string title = r["TenSach"].ToString() ?? "";
+                    cboCuonSach.Items.Add(new ConcurrencyComboItem(code, $"[{code}] {title}"));
+                }
+                if (cboCuonSach.Items.Count > 0)
+                    cboCuonSach.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                SetAlert("Lỗi Nạp Sách", ex.Message, AlertType.Danger);
+            }
         }
 
         public void LoadCurrentBookStatus()
         {
+            var item = cboCuonSach.SelectedItem as ConcurrencyComboItem;
+            string code = item?.Value ?? "CS001";
             try
             {
-                var dt = DatabaseHelper.ExecuteQuery("SELECT MaCuonSach, TinhTrang, TrangThai FROM CuonSach WITH (NOLOCK) WHERE MaCuonSach = 'CS001'");
+                var dt = DatabaseHelper.ExecuteQuery($"SELECT MaCuonSach, TinhTrang, TrangThai FROM CuonSach WITH (NOLOCK) WHERE MaCuonSach = '{code}'");
                 if (dt.Rows.Count > 0)
                 {
                     string tt = dt.Rows[0]["TinhTrang"].ToString() ?? "";
                     string st = dt.Rows[0]["TrangThai"].ToString() ?? "";
-                    lblCurrentStatus.Text = $"Trạng thái trong CSDL hiện tại: Tình trạng='{tt}', Trạng thái='{st}'";
+                    lblCurrentStatus.Text = $"CSDL: Tình trạng='{tt}' | Trạng thái='{st}'";
                 }
             }
             catch (Exception ex)
@@ -395,35 +459,33 @@ namespace ProjectHEQTCSDL.FormUI
             }
         }
 
+        public override void RefreshData()
+        {
+            LoadCurrentBookStatus();
+        }
+
         private async Task SaveBookStatus()
         {
-            btnSave.Enabled = false;
+            var item = cboCuonSach.SelectedItem as ConcurrencyComboItem;
+            string code = item?.Value ?? "CS001";
             string newStatus = cboTinhTrang.SelectedItem?.ToString() ?? "Rách bìa ngoài";
 
-            StartCountdown(10, "Đang gửi giao tác cập nhật CS001");
-            SetAlert("Đang Thực Hiện Giao Tác", $"[{DateTime.Now:HH:mm:ss}] Thủ thư A đang gửi cập nhật '{newStatus}' vào CSDL...", AlertType.Warning);
+            btnSave.Enabled = false;
+            StartCountdown(10, $"Đang gửi cập nhật cho cuốn {code}");
+            SetAlert("Đang Thực Hiện Giao Tác", $"[{DateTime.Now:HH:mm:ss}] Thủ thư A đang gửi cập nhật '{newStatus}' cho sách {code}...", AlertType.Warning);
 
             try
             {
                 var pars = new SqlParameter[]
                 {
-                    new SqlParameter("@p_MaCuonSach", "CS001"),
+                    new SqlParameter("@p_MaCuonSach", code),
                     new SqlParameter("@p_TinhTrang", newStatus)
                 };
 
                 var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_CapNhatTinhTrangCuonSach", pars);
                 StopCountdown();
-                string msg = "Cập nhật thành công!";
-                if (dt.Rows.Count > 0)
-                {
-                    if (dt.Columns.Contains("ThongBao"))
-                        msg = dt.Rows[0]["ThongBao"]?.ToString() ?? msg;
-                    else if (dt.Columns.Count > 0)
-                        msg = dt.Rows[0][0]?.ToString() ?? msg;
-                }
-                
                 LoadCurrentBookStatus();
-                SetAlert("Cập Nhật Thành Công", $"[{DateTime.Now:HH:mm:ss}] Thủ thư A đã lưu thành công: '{newStatus}' vào CSDL.", AlertType.Success);
+                SetAlert("Cập Nhật Thành Công", $"[{DateTime.Now:HH:mm:ss}] Thủ thư A đã lưu: '{newStatus}' cho sách {code}.", AlertType.Success);
                 OnDataChanged?.Invoke();
             }
             catch (Exception ex)
@@ -441,80 +503,109 @@ namespace ProjectHEQTCSDL.FormUI
 
     public class FrmLostUpdateWin2 : FrmConcurrencyBase
     {
+        private ComboBox cboCuonSach = null!;
         private ComboBox cboTinhTrang = null!;
         private Button btnSave = null!;
+        private Button btnRefreshBook = null!;
         private Label lblCurrentStatus = null!;
 
         public FrmLostUpdateWin2() : base(
             "[Quầy 2] Thủ Thư B",
-            "Cập nhật tình trạng vật lý cuốn sách CS001",
+            "Cập nhật tình trạng bảo quản sách trong kho",
             Color.FromArgb(180, 83, 9))
         {
-            this.Text = "[Quầy 2] Thủ Thư B - Cập Nhật Tình Trạng Sách CS001";
+            this.Text = "[Quầy 2] Thủ Thư B - Cập Nhật Tình Trạng Sách";
+            pnlBody.AutoScroll = false;
             BuildUI();
-            LoadCurrentBookStatus();
+            LoadBooks();
         }
 
         private void BuildUI()
         {
+            // 1. GroupBox chọn sách và hiển thị trạng thái CSDL
             var grpBook = new GroupBox
             {
-                Text = "Thông Tin Sách Đang Xử Lý",
+                Text = "THÔNG TIN SÁCH ĐANG XỬ LÝ (TỪ CSDL)",
                 Dock = DockStyle.Top,
-                Height = 150,
+                Height = 145,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Padding = new Padding(12, 20, 12, 8)
             };
 
-            var lblBookInfo = new Label
+            var lblSelectBook = new Label
             {
-                Text = "• Mã cuốn sách: CS001\n• Tựa sách: Lập trình C# Cơ bản từ Zero đến Hero\n• Mã đầu sách: S001 | Vị trí kệ: K01",
-                Location = new Point(20, 28),
-                Size = new Size(490, 55),
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(30, 41, 59)
+                Text = "Chọn cuốn sách kiểm tra:",
+                Location = new Point(20, 24),
+                Size = new Size(200, 20),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
             };
+
+            cboCuonSach = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(20, 46),
+                Size = new Size(490, 28),
+                Font = new Font("Segoe UI", 9.5F)
+            };
+            cboCuonSach.SelectedIndexChanged += (s, e) => LoadCurrentBookStatus();
 
             lblCurrentStatus = new Label
             {
                 Text = "Trạng thái trong CSDL: Đang tải...",
-                Location = new Point(20, 90),
-                Size = new Size(490, 30),
+                Location = new Point(20, 84),
+                Size = new Size(350, 24),
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(217, 119, 6)
             };
 
-            grpBook.Controls.AddRange(new Control[] { lblBookInfo, lblCurrentStatus });
-            pnlBody.Controls.Add(grpBook);
+            btnRefreshBook = new Button
+            {
+                Text = "Làm Mới CSDL",
+                Location = new Point(380, 82),
+                Size = new Size(130, 28),
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.8F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnRefreshBook.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnRefreshBook.Click += (s, e) => LoadCurrentBookStatus();
 
+            grpBook.Controls.AddRange(new Control[] { lblSelectBook, cboCuonSach, lblCurrentStatus, btnRefreshBook });
+
+            // 2. GroupBox cập nhật tình trạng
             var grpEdit = new GroupBox
             {
-                Text = "Cập Nhật Tình Trạng Cuốn Sách",
+                Text = "CẬP NHẬT TÌNH TRẠNG VẬT LÝ MỚI",
                 Dock = DockStyle.Top,
-                Height = 160,
+                Height = 140,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Padding = new Padding(12, 20, 12, 8)
             };
 
-            var lblSelect = new Label
+            var lblSelectStatus = new Label
             {
                 Text = "Chọn tình trạng ghi nhận:",
-                Location = new Point(20, 30),
-                Size = new Size(200, 22),
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Regular)
+                Location = new Point(20, 24),
+                Size = new Size(200, 20),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
             };
 
             cboTinhTrang = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Location = new Point(20, 55),
-                Size = new Size(490, 30),
+                Location = new Point(20, 46),
+                Size = new Size(490, 28),
                 Font = new Font("Segoe UI", 10F)
             };
             cboTinhTrang.Items.AddRange(new object[] {
                 "Mất đĩa CD kèm theo",
                 "Gãy gáy sách",
                 "Bị ướt góc trang",
+                "Rách bìa ngoài",
                 "ConTot"
             });
             cboTinhTrang.SelectedIndex = 0;
@@ -522,7 +613,7 @@ namespace ProjectHEQTCSDL.FormUI
             btnSave = new Button
             {
                 Text = "LƯU TÌNH TRẠNG VÀO CSDL",
-                Location = new Point(20, 98),
+                Location = new Point(20, 82),
                 Size = new Size(490, 42),
                 BackColor = Color.FromArgb(217, 119, 6),
                 ForeColor = Color.White,
@@ -533,23 +624,46 @@ namespace ProjectHEQTCSDL.FormUI
             btnSave.FlatAppearance.BorderSize = 0;
             btnSave.Click += async (s, e) => await SaveBookStatus();
 
-            grpEdit.Controls.AddRange(new Control[] { lblSelect, cboTinhTrang, btnSave });
-            pnlBody.Controls.Add(grpEdit);
+            grpEdit.Controls.AddRange(new Control[] { lblSelectStatus, cboTinhTrang, btnSave });
 
-            grpEdit.BringToFront();
-            grpBook.BringToFront();
+            pnlBody.Controls.Add(grpEdit);
+            pnlBody.Controls.Add(grpBook);
+        }
+
+        private void LoadBooks()
+        {
+            try
+            {
+                var dt = DatabaseHelper.ExecuteQuery(
+                    "SELECT c.MaCuonSach, s.TenSach, c.TinhTrang FROM CuonSach c JOIN View_DanhSachDauSach s ON c.MaSach = s.MaSach ORDER BY c.MaCuonSach ASC");
+                cboCuonSach.Items.Clear();
+                foreach (DataRow r in dt.Rows)
+                {
+                    string code = r["MaCuonSach"].ToString() ?? "";
+                    string title = r["TenSach"].ToString() ?? "";
+                    cboCuonSach.Items.Add(new ConcurrencyComboItem(code, $"[{code}] {title}"));
+                }
+                if (cboCuonSach.Items.Count > 0)
+                    cboCuonSach.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                SetAlert("Lỗi Nạp Sách", ex.Message, AlertType.Danger);
+            }
         }
 
         public void LoadCurrentBookStatus()
         {
+            var item = cboCuonSach.SelectedItem as ConcurrencyComboItem;
+            string code = item?.Value ?? "CS001";
             try
             {
-                var dt = DatabaseHelper.ExecuteQuery("SELECT MaCuonSach, TinhTrang, TrangThai FROM CuonSach WITH (NOLOCK) WHERE MaCuonSach = 'CS001'");
+                var dt = DatabaseHelper.ExecuteQuery($"SELECT MaCuonSach, TinhTrang, TrangThai FROM CuonSach WITH (NOLOCK) WHERE MaCuonSach = '{code}'");
                 if (dt.Rows.Count > 0)
                 {
                     string tt = dt.Rows[0]["TinhTrang"].ToString() ?? "";
                     string st = dt.Rows[0]["TrangThai"].ToString() ?? "";
-                    lblCurrentStatus.Text = $"Trạng thái trong CSDL hiện tại: Tình trạng='{tt}', Trạng thái='{st}'";
+                    lblCurrentStatus.Text = $"CSDL: Tình trạng='{tt}' | Trạng thái='{st}'";
                 }
             }
             catch (Exception ex)
@@ -558,35 +672,33 @@ namespace ProjectHEQTCSDL.FormUI
             }
         }
 
+        public override void RefreshData()
+        {
+            LoadCurrentBookStatus();
+        }
+
         private async Task SaveBookStatus()
         {
-            btnSave.Enabled = false;
+            var item = cboCuonSach.SelectedItem as ConcurrencyComboItem;
+            string code = item?.Value ?? "CS001";
             string newStatus = cboTinhTrang.SelectedItem?.ToString() ?? "Mất đĩa CD kèm theo";
 
-            StartCountdown(10, "Đang gửi giao tác cập nhật CS001");
-            SetAlert("Đang Thực Hiện Giao Tác", $"[{DateTime.Now:HH:mm:ss}] Thủ thư B đang gửi cập nhật '{newStatus}' vào CSDL...", AlertType.Warning);
+            btnSave.Enabled = false;
+            StartCountdown(10, $"Đang gửi cập nhật cho cuốn {code}");
+            SetAlert("Đang Thực Hiện Giao Tác", $"[{DateTime.Now:HH:mm:ss}] Thủ thư B đang gửi cập nhật '{newStatus}' cho sách {code}...", AlertType.Warning);
 
             try
             {
                 var pars = new SqlParameter[]
                 {
-                    new SqlParameter("@p_MaCuonSach", "CS001"),
+                    new SqlParameter("@p_MaCuonSach", code),
                     new SqlParameter("@p_TinhTrang", newStatus)
                 };
 
                 var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_CapNhatTinhTrangCuonSach", pars);
                 StopCountdown();
-                string msg = "Cập nhật thành công!";
-                if (dt.Rows.Count > 0)
-                {
-                    if (dt.Columns.Contains("ThongBao"))
-                        msg = dt.Rows[0]["ThongBao"]?.ToString() ?? msg;
-                    else if (dt.Columns.Count > 0)
-                        msg = dt.Rows[0][0]?.ToString() ?? msg;
-                }
-                
                 LoadCurrentBookStatus();
-                SetAlert("Cập Nhật Thành Công", $"[{DateTime.Now:HH:mm:ss}] Thủ thư B ĐÃ LƯU THÀNH CÔNG: '{newStatus}' vào CSDL.", AlertType.Success);
+                SetAlert("Cập Nhật Thành Công", $"[{DateTime.Now:HH:mm:ss}] Thủ thư B ĐÃ LƯU THÀNH CÔNG: '{newStatus}' cho sách {code}.", AlertType.Success);
                 OnDataChanged?.Invoke();
             }
             catch (Exception ex)
@@ -607,77 +719,113 @@ namespace ProjectHEQTCSDL.FormUI
     // =========================================================================
     public class FrmDirtyReadWin1 : FrmConcurrencyBase
     {
+        private ComboBox cboSachTra = null!;
+        private Label lblBookDetail = null!;
+        private Button btnRefreshReturn = null!;
         private Button btnTraSach = null!;
         private RadioButton radRollback = null!;
         private RadioButton radCommit = null!;
 
         public FrmDirtyReadWin1() : base(
             "[Quầy 1] Thủ Thư Tiếp Nhận Trả Sách",
-            "Tiếp nhận trả sách CS001 và xử lý vi phạm",
+            "Tiếp nhận trả sách và xử lý vi phạm tiền phạt",
             Color.FromArgb(30, 58, 138))
         {
             this.Text = "[Quầy 1] Thủ Thư - Tiếp Nhận Trả Sách";
+            pnlBody.AutoScroll = false;
             BuildUI();
+            LoadBorrowedBooks();
         }
 
         private void BuildUI()
         {
+            // 1. GroupBox thông tin sách đang mượn cần trả
             var grpBook = new GroupBox
             {
-                Text = "Hồ Sơ Mượn Sách Cần Trả",
+                Text = "HỒ SƠ MƯỢN SÁCH CẦN TRẢ (TỪ CSDL)",
                 Dock = DockStyle.Top,
-                Height = 130,
+                Height = 145,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Padding = new Padding(12, 20, 12, 8)
             };
 
-            var lblBookInfo = new Label
+            var lblPrompt = new Label
             {
-                Text = "• Mã cuốn sách: CS001 (Lập trình C# Cơ bản)\n• Độc giả: DG001 - Nguyễn Xuân Sang\n• Tình trạng mượn: Quá hạn 3 ngày (Phạt 15,000 VNĐ)\n• Trạng thái ban đầu: DangMuon",
-                Location = new Point(20, 28),
-                Size = new Size(490, 85),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(30, 41, 59)
+                Text = "Chọn cuốn sách độc giả đem trả:",
+                Location = new Point(20, 24),
+                Size = new Size(240, 20),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
             };
-            grpBook.Controls.Add(lblBookInfo);
 
+            cboSachTra = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(20, 46),
+                Size = new Size(490, 28),
+                Font = new Font("Segoe UI", 9.5F)
+            };
+            cboSachTra.SelectedIndexChanged += (s, e) => UpdateBookDetailLabel();
+
+            lblBookDetail = new Label
+            {
+                Text = "Hồ sơ: Đang tải thông tin mượn...",
+                Location = new Point(20, 84),
+                Size = new Size(350, 24),
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(2, 132, 199)
+            };
+
+            btnRefreshReturn = new Button
+            {
+                Text = "Làm Mới Sách",
+                Location = new Point(380, 82),
+                Size = new Size(130, 28),
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.8F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnRefreshReturn.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnRefreshReturn.Click += (s, e) => LoadBorrowedBooks();
+
+            grpBook.Controls.AddRange(new Control[] { lblPrompt, cboSachTra, lblBookDetail, btnRefreshReturn });
+
+            // 2. GroupBox quy trình xử lý trả sách & tiền phạt
             var grpAction = new GroupBox
             {
-                Text = "Quy Trình Tiếp Nhận & Xử Lý Tiền Phạt",
+                Text = "QUY TRÌNH TIẾP NHẬN VÀ XỬ LÝ TIỀN PHẠT",
                 Dock = DockStyle.Top,
-                Height = 180,
+                Height = 155,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Padding = new Padding(12, 20, 12, 8)
             };
 
             radRollback = new RadioButton
             {
                 Text = "Khách không đủ tiền phạt -> Hủy bỏ trả sách (ROLLBACK sau 10s)",
-                Location = new Point(20, 28),
+                Location = new Point(20, 24),
                 Size = new Size(490, 24),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Checked = true,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
+                Font = new Font("Segoe UI", 9.2F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(220, 38, 38)
             };
 
             radCommit = new RadioButton
             {
                 Text = "Khách nộp đủ tiền phạt -> Hoàn tất trả sách (COMMIT sau 10s)",
-                Location = new Point(20, 55),
+                Location = new Point(20, 50),
                 Size = new Size(490, 24),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
+                Font = new Font("Segoe UI", 9.2F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(22, 101, 52)
             };
 
             btnTraSach = new Button
             {
                 Text = "XÁC NHẬN TIẾP NHẬN TRẢ SÁCH",
-                Location = new Point(20, 95),
-                Size = new Size(490, 50),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                Location = new Point(20, 84),
+                Size = new Size(490, 48),
                 BackColor = Color.FromArgb(37, 99, 235),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
@@ -689,25 +837,71 @@ namespace ProjectHEQTCSDL.FormUI
 
             grpAction.Controls.AddRange(new Control[] { radRollback, radCommit, btnTraSach });
 
-            // Thứ tự add: grpAction trước, grpBook sau để grpBook ở trên đỉnh (Dock = Top)
             pnlBody.Controls.Add(grpAction);
             pnlBody.Controls.Add(grpBook);
         }
 
+        private void LoadBorrowedBooks()
+        {
+            try
+            {
+                var dt = DatabaseHelper.ExecuteQuery(@"
+                    SELECT c.MaCuonSach, s.TenSach, c.TrangThai, v.MaDG, dg.HoTen as TenDocGia
+                    FROM CuonSach c 
+                    JOIN View_DanhSachDauSach s ON c.MaSach = s.MaSach 
+                    LEFT JOIN View_LichSuMuon_DocGia v ON c.MaCuonSach = v.MaCuonSach AND v.TrangThai = 'DangMuon'
+                    LEFT JOIN DocGia dg ON v.MaDG = dg.MaDG
+                    WHERE c.TrangThai = 'DangMuon' OR c.MaCuonSach IN ('CS001', 'CS002')
+                    ORDER BY c.MaCuonSach ASC");
+
+                cboSachTra.Items.Clear();
+                foreach (DataRow r in dt.Rows)
+                {
+                    string maCS = r["MaCuonSach"].ToString()!;
+                    string tenS = r["TenSach"].ToString()!;
+                    string maDG = r["MaDG"].ToString()!;
+                    string tenDG = r["TenDocGia"].ToString()!;
+                    cboSachTra.Items.Add(new ConcurrencyComboItem(maCS, $"[{maCS}] {tenS} ({maDG} - {tenDG})"));
+                }
+                if (cboSachTra.Items.Count > 0)
+                    cboSachTra.SelectedIndex = 0;
+                UpdateBookDetailLabel();
+            }
+            catch (Exception ex)
+            {
+                SetAlert("Lỗi Nạp Sách", ex.Message, AlertType.Danger);
+            }
+        }
+
+        private void UpdateBookDetailLabel()
+        {
+            var item = cboSachTra.SelectedItem as ConcurrencyComboItem;
+            string code = item?.Value ?? "CS001";
+            lblBookDetail.Text = $"Cuốn: {code} | Trạng thái: Đang mượn | Tiền phạt quá hạn: 15,000 VNĐ";
+        }
+
+        public override void RefreshData()
+        {
+            LoadBorrowedBooks();
+        }
+
         private async Task ExecuteTraSach()
         {
+            var item = cboSachTra.SelectedItem as ConcurrencyComboItem;
+            string maCS = item?.Value ?? "CS001";
+
             btnTraSach.Enabled = false;
             int coLoiHoacHuy = radRollback.Checked ? 1 : 0;
             string outcome = coLoiHoacHuy == 1 ? "Khách thiếu tiền phạt (Sẽ Rollback)" : "Khách nộp đủ tiền (Sẽ Commit)";
 
-            StartCountdown(10, "Đang mở giao dịch trả sách");
-            SetAlert("Đang Mở Giao Tác Trả Sách", $"CSDL tạm chuyển CS001 sang 'CoSan'. Đang chờ khách nộp phạt (10 giây)...", AlertType.Warning);
+            StartCountdown(10, $"Đang mở giao dịch trả sách {maCS}");
+            SetAlert("Đang Mở Giao Tác Trả Sách", $"CSDL tạm chuyển {maCS} sang 'CoSan'. Đang chờ khách nộp phạt (10 giây)...", AlertType.Warning);
 
             try
             {
                 var pars = new SqlParameter[]
                 {
-                    new SqlParameter("@p_MaCuonSach", "CS001"),
+                    new SqlParameter("@p_MaCuonSach", maCS),
                     new SqlParameter("@p_CoLoiHoacHuy", coLoiHoacHuy)
                 };
 
@@ -718,15 +912,16 @@ namespace ProjectHEQTCSDL.FormUI
                 
                 if (coLoiHoacHuy == 1)
                 {
-                    SetAlert("Giao Tác Đã Rollback", $"Khách không đóng tiền phạt -> Đã Rollback giao dịch. Trạng thái sách CS001 vẫn là 'DangMuon'.", AlertType.Danger);
-                    MessageBox.Show("Khách hàng không đủ tiền nộp phạt!\n\nHệ thống đã thực hiện ROLLBACK giao dịch.\nTrạng thái sách CS001 được khôi phục về 'DangMuon'.", "Hủy Giao Dịch Trả Sách (Rollback)", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    SetAlert("Giao Tác Đã Rollback", $"Khách không đóng tiền phạt -> Đã Rollback giao dịch. Trạng thái sách {maCS} vẫn là 'DangMuon'.", AlertType.Danger);
+                    MessageBox.Show($"Khách hàng không đủ tiền nộp phạt!\n\nHệ thống đã thực hiện ROLLBACK giao dịch.\nTrạng thái sách {maCS} được khôi phục về 'DangMuon'.", "Hủy Giao Dịch Trả Sách (Rollback)", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
                 else
                 {
-                    SetAlert("Trả Sách Thành Công", "Khách nộp đủ tiền phạt -> Đã COMMIT giao dịch. CS001 chuyển sang 'CoSan'.", AlertType.Success);
-                    MessageBox.Show("Khách hàng nộp phạt thành công!\n\nĐã COMMIT giao dịch hoàn tất.\nSách CS001 chính thức có sẵn trên kệ (CoSan).", "Hoàn Tất Trả Sách (Commit)", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    SetAlert("Trả Sách Thành Công", $"Khách nộp đủ tiền phạt -> Đã COMMIT giao dịch. {maCS} chuyển sang 'CoSan'.", AlertType.Success);
+                    MessageBox.Show($"Khách hàng nộp phạt thành công!\n\nĐã COMMIT giao dịch hoàn tất.\nSách {maCS} chính thức có sẵn trên kệ (CoSan).", "Hoàn Tất Trả Sách (Commit)", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
 
+                LoadBorrowedBooks();
                 OnDataChanged?.Invoke();
             }
             catch (Exception ex)
@@ -1006,7 +1201,7 @@ namespace ProjectHEQTCSDL.FormUI
                         FROM CuonSach c WITH (NOLOCK)
                         LEFT JOIN View_LichSuMuon_DocGia v WITH (NOLOCK) ON c.MaCuonSach = v.MaCuonSach AND v.TrangThai = 'DangMuon'
                         LEFT JOIN DocGia dg WITH (NOLOCK) ON v.MaDG = dg.MaDG
-                        WHERE c.MaCuonSach = 'CS001'";
+                        WHERE c.MaCuonSach = '" + (string.IsNullOrEmpty(txtSearch.Text.Trim()) ? "CS001" : txtSearch.Text.Trim()) + "'";
                 }
                 else
                 {
@@ -1023,6 +1218,11 @@ namespace ProjectHEQTCSDL.FormUI
             {
                 MessageBox.Show("Lỗi tải view: " + ex.Message, "Lỗi CSDL", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        public override void RefreshData()
+        {
+            LoadViewData();
         }
 
         private async Task ExecuteMuonSach()
@@ -1101,34 +1301,70 @@ namespace ProjectHEQTCSDL.FormUI
     // =========================================================================
     public class FrmNonRepeatableWin1 : FrmConcurrencyBase
     {
+        private ComboBox cboDauSach = null!;
+        private Button btnRefreshDauSach = null!;
         private Button btnKiemKe = null!;
         private DataGridView dgvResult = null!;
 
         public FrmNonRepeatableWin1() : base(
             "[Quầy 1] Quản Lý Kho Thư Viện",
-            "Kiểm kê số lượng bản sao có sẵn của đầu sách S001",
+            "Kiểm kê số lượng bản sao có sẵn của đầu sách",
             Color.FromArgb(30, 58, 138))
         {
             this.Text = "[Quầy 1] Quản Lý Kho - Báo Cáo Kiểm Kê Đầu Sách";
+            pnlBody.AutoScroll = false;
             BuildUI();
+            LoadDauSach();
         }
 
         private void BuildUI()
         {
+            // 1. GroupBox chọn đầu sách và hành động kiểm kê
             var grpAction = new GroupBox
             {
-                Text = "Nghiệp Vụ Kiểm Kê Đầu Sách S001",
+                Text = "NGHIỆP VỤ KIỂM KÊ ĐẦU SÁCH (TỪ CSDL)",
                 Dock = DockStyle.Top,
-                Height = 110,
+                Height = 145,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Padding = new Padding(12, 20, 12, 8)
             };
+
+            var lblPrompt = new Label
+            {
+                Text = "Chọn đầu sách cần kiểm kê kho:",
+                Location = new Point(20, 24),
+                Size = new Size(240, 20),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
+            };
+
+            cboDauSach = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(20, 46),
+                Size = new Size(350, 28),
+                Font = new Font("Segoe UI", 9.5F)
+            };
+
+            btnRefreshDauSach = new Button
+            {
+                Text = "Tải Lại Sách",
+                Location = new Point(380, 45),
+                Size = new Size(130, 28),
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.8F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnRefreshDauSach.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnRefreshDauSach.Click += (s, e) => LoadDauSach();
 
             btnKiemKe = new Button
             {
                 Text = "XUẤT BÁO CÁO KIỂM KÊ ĐẦU SÁCH",
-                Location = new Point(20, 30),
-                Size = new Size(490, 50),
+                Location = new Point(20, 84),
+                Size = new Size(490, 44),
                 BackColor = Color.FromArgb(37, 99, 235),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
@@ -1138,16 +1374,16 @@ namespace ProjectHEQTCSDL.FormUI
             btnKiemKe.FlatAppearance.BorderSize = 0;
             btnKiemKe.Click += async (s, e) => await ExecuteKiemKe();
 
-            grpAction.Controls.Add(btnKiemKe);
-            pnlBody.Controls.Add(grpAction);
+            grpAction.Controls.AddRange(new Control[] { lblPrompt, cboDauSach, btnRefreshDauSach, btnKiemKe });
 
+            // 2. GroupBox kết quả đối soát 2 lần đếm
             var grpResult = new GroupBox
             {
-                Text = "Bảng Đối Soát 2 Lần Đọc Trong Cùng 1 Giao Dịch",
+                Text = "BẢNG ĐỐI SOÁT 2 LẦN ĐỌC TRONG CÙNG 1 TRANSACTION",
                 Dock = DockStyle.Top,
                 Height = 160,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(10)
+                Padding = new Padding(10, 20, 10, 8)
             };
 
             dgvResult = new DataGridView
@@ -1161,21 +1397,44 @@ namespace ProjectHEQTCSDL.FormUI
                 Font = new Font("Segoe UI", 9F)
             };
             grpResult.Controls.Add(dgvResult);
-            pnlBody.Controls.Add(grpResult);
 
-            grpResult.BringToFront();
-            grpAction.BringToFront();
+            pnlBody.Controls.Add(grpResult);
+            pnlBody.Controls.Add(grpAction);
+        }
+
+        private void LoadDauSach()
+        {
+            try
+            {
+                var dt = DatabaseHelper.ExecuteQuery("SELECT MaSach, TenSach FROM View_DanhSachDauSach ORDER BY MaSach ASC");
+                cboDauSach.Items.Clear();
+                foreach (DataRow r in dt.Rows)
+                {
+                    string code = r["MaSach"].ToString() ?? "";
+                    string title = r["TenSach"].ToString() ?? "";
+                    cboDauSach.Items.Add(new ConcurrencyComboItem(code, $"[{code}] {title}"));
+                }
+                if (cboDauSach.Items.Count > 0)
+                    cboDauSach.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                SetAlert("Lỗi Nạp Đầu Sách", ex.Message, AlertType.Danger);
+            }
         }
 
         private async Task ExecuteKiemKe()
         {
+            var item = cboDauSach.SelectedItem as ConcurrencyComboItem;
+            string maSach = item?.Value ?? "S001";
+
             btnKiemKe.Enabled = false;
-            StartCountdown(10, "Đang thực hiện giao tác kiểm kê kho");
-            SetAlert("Đang Kiểm Kê Kho Sách", "Đã đếm Lần 1. Đang giữ Transaction kiểm kê trong 10 giây để đếm Lần 2...", AlertType.Warning);
+            StartCountdown(10, $"Đang thực hiện kiểm kê đầu sách {maSach}");
+            SetAlert("Đang Kiểm Kê Kho Sách", $"Đã đếm Lần 1 cho {maSach}. Đang giữ Transaction kiểm kê 10s để đếm Lần 2...", AlertType.Warning);
 
             try
             {
-                var pars = new SqlParameter[] { new SqlParameter("@p_MaSach", "S001") };
+                var pars = new SqlParameter[] { new SqlParameter("@p_MaSach", maSach) };
                 var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_BaoCaoKiemKeKho", pars);
                 StopCountdown();
                 dgvResult.DataSource = dt;
@@ -1189,12 +1448,12 @@ namespace ProjectHEQTCSDL.FormUI
                     if (lan1?.ToString() != lan2?.ToString())
                     {
                         SetAlert("Phát Hiện Lỗi Đọc Không Nhất Quán", $"Lần 1 đếm: {lan1} cuốn | Lần 2 đếm: {lan2} cuốn. Số lượng bị thay đổi giữa chừng!", AlertType.Danger);
-                        MessageBox.Show($"Báo cáo kiểm kê đầu sách S001 hoàn tất:\n\n• Số lượng đếm Lần 1: {lan1} cuốn\n• Số lượng đếm Lần 2: {lan2} cuốn\n\nPHÁT HIỆN LỖI NON-REPEATABLE READ:\nTrong lúc bạn đang kiểm kê, một thủ thư ở quầy khác đã cho mượn 1 cuốn sách làm thay đổi số lượng giữa 2 lần đếm trong cùng 1 phiên làm việc!", "Kết Quả Kiểm Kê Kho", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"Báo cáo kiểm kê đầu sách {maSach} hoàn tất:\n\n• Số lượng đếm Lần 1: {lan1} cuốn\n• Số lượng đếm Lần 2: {lan2} cuốn\n\nPHÁT HIỆN LỖI NON-REPEATABLE READ:\nTrong lúc bạn đang kiểm kê, một thủ thư ở quầy khác đã cho mượn 1 cuốn sách làm thay đổi số lượng giữa 2 lần đếm trong cùng 1 phiên làm việc!", "Kết Quả Kiểm Kê Kho", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                     else
                     {
                         SetAlert("Kiểm Kê Nhất Quán", $"Số lượng 2 lần đếm đều bằng {lan1} cuốn (Dữ liệu nhất quán).", AlertType.Success);
-                        MessageBox.Show($"Báo cáo kiểm kê đầu sách S001 hoàn tất!\nSố lượng sách có sẵn: {lan1} cuốn (Nhất quán giữa 2 lần đếm).", "Kết Quả Kiểm Kê Kho", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show($"Báo cáo kiểm kê đầu sách {maSach} hoàn tất!\nSố lượng sách có sẵn: {lan1} cuốn (Nhất quán giữa 2 lần đếm).", "Kết Quả Kiểm Kê Kho", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
                 OnDataChanged?.Invoke();
@@ -1215,8 +1474,10 @@ namespace ProjectHEQTCSDL.FormUI
 
     public class FrmNonRepeatableWin2 : FrmConcurrencyBase
     {
+        private ComboBox cboDocGia = null!;
+        private ComboBox cboCuonSach = null!;
+        private Button btnRefreshAvailable = null!;
         private Button btnChoMuon = null!;
-        private Label lblCuonSach = null!;
 
         public FrmNonRepeatableWin2() : base(
             "[Quầy 2] Quầy Thủ Thư",
@@ -1224,34 +1485,75 @@ namespace ProjectHEQTCSDL.FormUI
             Color.FromArgb(180, 83, 9))
         {
             this.Text = "[Quầy 2] Quầy Thủ Thư - Lập Phiếu Cho Mượn Sách";
+            pnlBody.AutoScroll = false;
             BuildUI();
+            LoadData();
         }
 
         private void BuildUI()
         {
             var grpAction = new GroupBox
             {
-                Text = "Quầy Thủ Thư - Lập Phiếu Cho Mượn Sách",
+                Text = "QUẦY THỦ THƯ - LẬP PHIẾU CHO MƯỢN SÁCH",
                 Dock = DockStyle.Top,
-                Height = 190,
+                Height = 195,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Padding = new Padding(12, 20, 12, 8)
             };
 
-            lblCuonSach = new Label
+            var lblDocGia = new Label
             {
-                Text = "• Cuốn sách: CS002 (Thuộc đầu sách S001 - Lập trình C#)\n• Độc giả: DG002 - Trần Minh Tuấn (Thẻ: Còn hạn)\n• Thao tác: Lập phiếu mượn qua Stored Procedure sp_LapPhieuMuon",
-                Location = new Point(20, 30),
-                Size = new Size(490, 65),
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(30, 41, 59)
+                Text = "Chọn độc giả mượn sách:",
+                Location = new Point(20, 22),
+                Size = new Size(200, 18),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
             };
+
+            cboDocGia = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(20, 42),
+                Size = new Size(490, 26),
+                Font = new Font("Segoe UI", 9.5F)
+            };
+
+            var lblCuonSach = new Label
+            {
+                Text = "Chọn cuốn sách có sẵn (CoSan) cho mượn:",
+                Location = new Point(20, 74),
+                Size = new Size(300, 18),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
+            };
+
+            cboCuonSach = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(20, 94),
+                Size = new Size(350, 26),
+                Font = new Font("Segoe UI", 9.5F)
+            };
+
+            btnRefreshAvailable = new Button
+            {
+                Text = "Làm Mới Sách",
+                Location = new Point(380, 93),
+                Size = new Size(130, 28),
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.8F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnRefreshAvailable.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnRefreshAvailable.Click += (s, e) => LoadAvailableBooks();
 
             btnChoMuon = new Button
             {
-                Text = "XÁC NHẬN CHO MƯỢN SÁCH (CS002)",
-                Location = new Point(20, 105),
-                Size = new Size(490, 50),
+                Text = "XÁC NHẬN CHO MƯỢN SÁCH",
+                Location = new Point(20, 132),
+                Size = new Size(490, 48),
                 BackColor = Color.FromArgb(217, 119, 6),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
@@ -1261,25 +1563,85 @@ namespace ProjectHEQTCSDL.FormUI
             btnChoMuon.FlatAppearance.BorderSize = 0;
             btnChoMuon.Click += async (s, e) => await ExecuteChoMuon();
 
-            grpAction.Controls.AddRange(new Control[] { lblCuonSach, btnChoMuon });
+            grpAction.Controls.AddRange(new Control[] { lblDocGia, cboDocGia, lblCuonSach, cboCuonSach, btnRefreshAvailable, btnChoMuon });
             pnlBody.Controls.Add(grpAction);
+        }
 
-            grpAction.BringToFront();
+        private void LoadData()
+        {
+            LoadDocGia();
+            LoadAvailableBooks();
+        }
+
+        private void LoadDocGia()
+        {
+            try
+            {
+                var dt = DatabaseHelper.ExecuteQuery("SELECT MaDG, HoTen FROM DocGia ORDER BY MaDG ASC");
+                cboDocGia.Items.Clear();
+                foreach (DataRow r in dt.Rows)
+                {
+                    string code = r["MaDG"].ToString() ?? "";
+                    string name = r["HoTen"].ToString() ?? "";
+                    cboDocGia.Items.Add(new ConcurrencyComboItem(code, $"[{code}] {name}"));
+                }
+                if (cboDocGia.Items.Count > 1)
+                    cboDocGia.SelectedIndex = 1; // DG002
+                else if (cboDocGia.Items.Count > 0)
+                    cboDocGia.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                SetAlert("Lỗi Nạp Độc Giả", ex.Message, AlertType.Danger);
+            }
+        }
+
+        private void LoadAvailableBooks()
+        {
+            try
+            {
+                var dt = DatabaseHelper.ExecuteQuery(
+                    "SELECT MaCuonSach, TenSach, ViTriKe FROM View_SachCoSan ORDER BY MaCuonSach ASC");
+                cboCuonSach.Items.Clear();
+                foreach (DataRow r in dt.Rows)
+                {
+                    string code = r["MaCuonSach"].ToString() ?? "";
+                    string title = r["TenSach"].ToString() ?? "";
+                    cboCuonSach.Items.Add(new ConcurrencyComboItem(code, $"[{code}] {title}"));
+                }
+                if (cboCuonSach.Items.Count > 0)
+                    cboCuonSach.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                SetAlert("Lỗi Nạp Sách", ex.Message, AlertType.Danger);
+            }
+        }
+
+        public override void RefreshData()
+        {
+            LoadAvailableBooks();
         }
 
         private async Task ExecuteChoMuon()
         {
+            var itemDG = cboDocGia.SelectedItem as ConcurrencyComboItem;
+            string maDG = itemDG?.Value ?? "DG002";
+
+            var itemBook = cboCuonSach.SelectedItem as ConcurrencyComboItem;
+            string maCS = itemBook?.Value ?? "CS002";
+
             btnChoMuon.Enabled = false;
 
             try
             {
                 var dtBooks = new DataTable();
                 dtBooks.Columns.Add("MaCuonSach", typeof(string));
-                dtBooks.Rows.Add("CS002");
+                dtBooks.Rows.Add(maCS);
 
                 var pars = new SqlParameter[] { 
                     new SqlParameter("@p_MaPhieuMuon", "PM" + DateTime.Now.ToString("ddHHmmss")),
-                    new SqlParameter("@p_MaDG", "DG002"),
+                    new SqlParameter("@p_MaDG", maDG),
                     new SqlParameter("@p_MaNV", "NV001"),
                     new SqlParameter("@p_NgayHenTra", DateTime.Now.AddDays(14)),
                     DatabaseHelper.CreateStructuredParameter("@p_DanhSachCuonSach", "dbo.DanhSachCuonSachType", dtBooks)
@@ -1294,14 +1656,16 @@ namespace ProjectHEQTCSDL.FormUI
 
                 if (!isError && !string.IsNullOrEmpty(msg))
                 {
-                    SetAlert("Cho Mượn Thành Công", "Đã lập phiếu mượn và chuyển cuốn sách CS002 sang 'DangMuon' qua sp_LapPhieuMuon thành công.", AlertType.Success);
-                    MessageBox.Show("Thủ thư đã xác nhận cho mượn cuốn sách CS002 thành công qua Stored Procedure sp_LapPhieuMuon!\nTrạng thái cuốn sách đã chuyển thành 'DangMuon'.", "Cho Mượn Sách Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    SetAlert("Cho Mượn Thành Công", $"Đã lập phiếu mượn và chuyển cuốn sách {maCS} sang 'DangMuon' thành công.", AlertType.Success);
+                    MessageBox.Show($"Thủ thư đã xác nhận cho mượn cuốn sách {maCS} thành công qua Stored Procedure sp_LapPhieuMuon!\nTrạng thái cuốn sách đã chuyển thành 'DangMuon'.", "Cho Mượn Sách Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
                 {
-                    SetAlert("Cảnh Báo Nghiệp Vụ", !string.IsNullOrEmpty(msg) ? msg : "Không thể lập phiếu mượn sách. Vui lòng kiểm tra lại tình trạng sách trên Form Thủ thư.", AlertType.Warning);
-                    MessageBox.Show(!string.IsNullOrEmpty(msg) ? msg : "Không thể lập phiếu mượn sách. Vui lòng kiểm tra lại tình trạng sách trên Form Thủ thư.", "Thông Báo Nghiệp Vụ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    SetAlert("Cảnh Báo Nghiệp Vụ", !string.IsNullOrEmpty(msg) ? msg : "Không thể lập phiếu mượn sách. Vui lòng kiểm tra lại tình trạng sách.", AlertType.Warning);
+                    MessageBox.Show(!string.IsNullOrEmpty(msg) ? msg : "Không thể lập phiếu mượn sách. Vui lòng kiểm tra lại tình trạng sách.", "Thông Báo Nghiệp Vụ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
+
+                LoadAvailableBooks();
                 OnDataChanged?.Invoke();
             }
             catch (Exception ex)
@@ -1322,6 +1686,7 @@ namespace ProjectHEQTCSDL.FormUI
     // =========================================================================
     public class FrmPhantomWin1 : FrmConcurrencyBase
     {
+        private ComboBox cboLocPhieu = null!;
         private Button btnBaoCao = null!;
         private DataGridView dgvResult = null!;
 
@@ -1331,25 +1696,50 @@ namespace ProjectHEQTCSDL.FormUI
             Color.FromArgb(30, 58, 138))
         {
             this.Text = "[Phòng Kế Toán] Kế toán Thư viện - Báo cáo Tổng hợp Phạt";
+            pnlBody.AutoScroll = false;
             BuildUI();
         }
 
         private void BuildUI()
         {
+            // 1. GroupBox phạm vi thống kê
             var grpAction = new GroupBox
             {
-                Text = "Nghiệp Vụ Kế Toán - Tổng Hợp Phiếu Phạt",
+                Text = "NGHIỆP VỤ KẾ TOÁN - TỔNG HỢP TIỀN PHẠT",
                 Dock = DockStyle.Top,
-                Height = 110,
+                Height = 145,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Padding = new Padding(12, 20, 12, 8)
             };
+
+            var lblPrompt = new Label
+            {
+                Text = "Chọn phạm vi đối soát phiếu phạt:",
+                Location = new Point(20, 24),
+                Size = new Size(260, 20),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
+            };
+
+            cboLocPhieu = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(20, 46),
+                Size = new Size(490, 28),
+                Font = new Font("Segoe UI", 9.5F)
+            };
+            cboLocPhieu.Items.AddRange(new object[] {
+                "Tất cả các phiếu phạt vi phạm trong CSDL",
+                "Phiếu phạt chưa thanh toán (ChuaThanhToan)",
+                "Phiếu phạt mức từ 50,000 VNĐ trở lên"
+            });
+            cboLocPhieu.SelectedIndex = 0;
 
             btnBaoCao = new Button
             {
                 Text = "XUẤT BÁO CÁO TỔNG HỢP TIỀN PHẠT",
-                Location = new Point(20, 30),
-                Size = new Size(490, 50),
+                Location = new Point(20, 84),
+                Size = new Size(490, 44),
                 BackColor = Color.FromArgb(37, 99, 235),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
@@ -1359,16 +1749,16 @@ namespace ProjectHEQTCSDL.FormUI
             btnBaoCao.FlatAppearance.BorderSize = 0;
             btnBaoCao.Click += async (s, e) => await ExecuteBaoCao();
 
-            grpAction.Controls.Add(btnBaoCao);
-            pnlBody.Controls.Add(grpAction);
+            grpAction.Controls.AddRange(new Control[] { lblPrompt, cboLocPhieu, btnBaoCao });
 
+            // 2. GroupBox kết quả đối soát
             var grpResult = new GroupBox
             {
-                Text = "Bảng Kết Quả Đối Soát & Thống Kê Phiếu Phạt",
+                Text = "BẢNG ĐỐI SOÁT & THỐNG KÊ PHIẾU PHẠT (REPEATABLE READ)",
                 Dock = DockStyle.Top,
-                Height = 220,
+                Height = 175,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(10)
+                Padding = new Padding(10, 20, 10, 8)
             };
 
             dgvResult = new DataGridView
@@ -1382,10 +1772,9 @@ namespace ProjectHEQTCSDL.FormUI
                 Font = new Font("Segoe UI", 9F)
             };
             grpResult.Controls.Add(dgvResult);
-            pnlBody.Controls.Add(grpResult);
 
-            grpResult.BringToFront();
-            grpAction.BringToFront();
+            pnlBody.Controls.Add(grpResult);
+            pnlBody.Controls.Add(grpAction);
         }
 
         private async Task ExecuteBaoCao()
@@ -1436,6 +1825,8 @@ namespace ProjectHEQTCSDL.FormUI
     public class FrmPhantomWin2 : FrmConcurrencyBase
     {
         private TextBox txtMaPP = null!;
+        private ComboBox cboDocGia = null!;
+        private ComboBox cboLyDo = null!;
         private TextBox txtSoTien = null!;
         private Button btnTaoPhieu = null!;
 
@@ -1445,31 +1836,102 @@ namespace ProjectHEQTCSDL.FormUI
             Color.FromArgb(180, 83, 9))
         {
             this.Text = "[Quầy 2] Quầy Thủ Thư - Lập Phiếu Phạt Mới";
+            pnlBody.AutoScroll = false;
             BuildUI();
+            LoadDocGia();
         }
 
         private void BuildUI()
         {
             var grpAction = new GroupBox
             {
-                Text = "Thông Tin Phiếu Phạt Mới",
+                Text = "THÔNG TIN GHI NHẬN PHIẾU PHẠT MỚI (TỪ CSDL)",
                 Dock = DockStyle.Top,
-                Height = 190,
+                Height = 220,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Padding = new Padding(12, 20, 12, 8)
             };
 
-            var lblMa = new Label { Text = "Mã phiếu phạt:", Location = new Point(20, 28), Size = new Size(150, 22), Font = new Font("Segoe UI", 9F, FontStyle.Regular) };
-            txtMaPP = new TextBox { Text = "PP999", Location = new Point(20, 50), Size = new Size(180, 28), Font = new Font("Segoe UI", 10F) };
+            // Row 1: Mã phiếu phạt & Độc giả
+            var lblMa = new Label 
+            { 
+                Text = "Mã phiếu phạt:", 
+                Location = new Point(20, 24), 
+                Size = new Size(130, 18), 
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
+            };
+            txtMaPP = new TextBox 
+            { 
+                Text = "PP" + DateTime.Now.ToString("mmss"), 
+                Location = new Point(20, 44), 
+                Size = new Size(130, 26), 
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(180, 83, 9)
+            };
 
-            var lblTien = new Label { Text = "Số tiền phạt (VNĐ):", Location = new Point(230, 28), Size = new Size(150, 22), Font = new Font("Segoe UI", 9F, FontStyle.Regular) };
-            txtSoTien = new TextBox { Text = "50000", Location = new Point(230, 50), Size = new Size(180, 28), Font = new Font("Segoe UI", 10F) };
+            var lblDocGia = new Label 
+            { 
+                Text = "Độc giả vi phạm:", 
+                Location = new Point(170, 24), 
+                Size = new Size(160, 18), 
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
+            };
+            cboDocGia = new ComboBox 
+            { 
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(170, 44), 
+                Size = new Size(340, 26), 
+                Font = new Font("Segoe UI", 9.5F) 
+            };
 
+            // Row 2: Lý do & Số tiền
+            var lblLyDo = new Label 
+            { 
+                Text = "Lý do ghi phạt:", 
+                Location = new Point(20, 78), 
+                Size = new Size(150, 18), 
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
+            };
+            cboLyDo = new ComboBox 
+            { 
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(20, 98), 
+                Size = new Size(280, 26), 
+                Font = new Font("Segoe UI", 9.5F) 
+            };
+            cboLyDo.Items.AddRange(new object[] {
+                "Làm mất sách",
+                "Làm sách",
+                "Quá hạn mượn",
+                "Mất đĩa CD"
+            });
+            cboLyDo.SelectedIndex = 0;
+
+            var lblTien = new Label 
+            { 
+                Text = "Số tiền phạt (VNĐ):", 
+                Location = new Point(320, 78), 
+                Size = new Size(150, 18), 
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(71, 85, 105)
+            };
+            txtSoTien = new TextBox 
+            { 
+                Text = "50000", 
+                Location = new Point(320, 98), 
+                Size = new Size(190, 26), 
+                Font = new Font("Segoe UI", 10F) 
+            };
+
+            // Row 3: Button xác nhận
             btnTaoPhieu = new Button
             {
                 Text = "XÁC NHẬN GHI NHẬN PHIẾU PHẠT",
-                Location = new Point(20, 100),
-                Size = new Size(490, 50),
+                Location = new Point(20, 142),
+                Size = new Size(490, 48),
                 BackColor = Color.FromArgb(217, 119, 6),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
@@ -1479,17 +1941,36 @@ namespace ProjectHEQTCSDL.FormUI
             btnTaoPhieu.FlatAppearance.BorderSize = 0;
             btnTaoPhieu.Click += async (s, e) => await ExecuteTaoPhieu();
 
-            grpAction.Controls.AddRange(new Control[] { lblMa, txtMaPP, lblTien, txtSoTien, btnTaoPhieu });
+            grpAction.Controls.AddRange(new Control[] { lblMa, txtMaPP, lblDocGia, cboDocGia, lblLyDo, cboLyDo, lblTien, txtSoTien, btnTaoPhieu });
             pnlBody.Controls.Add(grpAction);
+        }
 
-            grpAction.BringToFront();
+        private void LoadDocGia()
+        {
+            try
+            {
+                var dt = DatabaseHelper.ExecuteQuery("SELECT MaDG, HoTen FROM DocGia ORDER BY MaDG ASC");
+                cboDocGia.Items.Clear();
+                foreach (DataRow r in dt.Rows)
+                {
+                    string code = r["MaDG"].ToString() ?? "";
+                    string name = r["HoTen"].ToString() ?? "";
+                    cboDocGia.Items.Add(new ConcurrencyComboItem(code, $"[{code}] {name}"));
+                }
+                if (cboDocGia.Items.Count > 0)
+                    cboDocGia.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                SetAlert("Lỗi Nạp Độc Giả", ex.Message, AlertType.Danger);
+            }
         }
 
         private async Task ExecuteTaoPhieu()
         {
             btnTaoPhieu.Enabled = false;
             string maPP = txtMaPP.Text.Trim();
-            if (string.IsNullOrEmpty(maPP)) maPP = "PP999";
+            if (string.IsNullOrEmpty(maPP)) maPP = "PP" + DateTime.Now.ToString("mmss");
             decimal.TryParse(txtSoTien.Text.Trim(), out decimal soTien);
             if (soTien <= 0) soTien = 50000;
 
@@ -1504,6 +1985,9 @@ namespace ProjectHEQTCSDL.FormUI
                 var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_TaoPhieuPhatNhanh", pars);
                 SetAlert("Tạo Phiếu Phạt Thành Công", $"Đã ghi nhận phiếu phạt {maPP} ({soTien:N0} VNĐ) vào cơ sở dữ liệu.", AlertType.Success);
                 MessageBox.Show($"Đã tạo mới phiếu phạt {maPP} ({soTien:N0} VNĐ) thành công vào hệ thống!", "Lập Phiếu Phạt Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                
+                // Sinh mã mới cho lần lập kế tiếp
+                txtMaPP.Text = "PP" + DateTime.Now.ToString("mmss");
                 OnDataChanged?.Invoke();
             }
             catch (Exception ex)
@@ -1673,7 +2157,7 @@ namespace ProjectHEQTCSDL.FormUI
             try
             {
                 var dt = await DatabaseHelper.ExecuteQueryAsync(
-                    "SELECT cs.MaCuonSach, s.TenSach, cs.TrangThai, cs.TinhTrang FROM CuonSach cs JOIN Sach s ON cs.MaSach = s.MaSach WHERE cs.MaCuonSach IN ('CS001', 'CS004') ORDER BY cs.MaCuonSach ASC");
+                    "SELECT cs.MaCuonSach, s.TenSach, cs.TrangThai, cs.TinhTrang FROM CuonSach cs JOIN View_DanhSachDauSach s ON cs.MaSach = s.MaSach WHERE cs.MaCuonSach IN ('CS001', 'CS004') ORDER BY cs.MaCuonSach ASC");
                 if (dt.Rows.Count > 0)
                 {
                     var lines = new List<string>();
@@ -1932,7 +2416,7 @@ namespace ProjectHEQTCSDL.FormUI
             try
             {
                 var dt = await DatabaseHelper.ExecuteQueryAsync(
-                    "SELECT cs.MaCuonSach, s.TenSach, cs.TrangThai, cs.TinhTrang FROM CuonSach cs JOIN Sach s ON cs.MaSach = s.MaSach WHERE cs.MaCuonSach IN ('CS001', 'CS004') ORDER BY cs.MaCuonSach ASC");
+                    "SELECT cs.MaCuonSach, s.TenSach, cs.TrangThai, cs.TinhTrang FROM CuonSach cs JOIN View_DanhSachDauSach s ON cs.MaSach = s.MaSach WHERE cs.MaCuonSach IN ('CS001', 'CS004') ORDER BY cs.MaCuonSach ASC");
                 if (dt.Rows.Count > 0)
                 {
                     var lines = new List<string>();
