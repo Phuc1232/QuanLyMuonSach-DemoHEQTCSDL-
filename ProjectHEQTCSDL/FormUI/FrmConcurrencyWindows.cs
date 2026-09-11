@@ -631,15 +631,16 @@ namespace ProjectHEQTCSDL.FormUI
                 Padding = new Padding(15)
             };
 
-            grpBook.Controls.Add(new Label
+            var lblBookInfo = new Label
             {
-                Text = "• Mã cuốn sách: CS001 (Lập trình C# Cơ bản)\n• Độc giả: DG001 - Nguyễn Văn A\n• Tình trạng mượn: Quá hạn 3 ngày (Phạt 15,000 VNĐ)\n• Trạng thái ban đầu: DangMuon",
+                Text = "• Mã cuốn sách: CS001 (Lập trình C# Cơ bản)\n• Độc giả: DG001 - Nguyễn Xuân Sang\n• Tình trạng mượn: Quá hạn 3 ngày (Phạt 15,000 VNĐ)\n• Trạng thái ban đầu: DangMuon",
                 Location = new Point(20, 28),
                 Size = new Size(490, 85),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(30, 41, 59)
-            });
-            pnlBody.Controls.Add(grpBook);
+            };
+            grpBook.Controls.Add(lblBookInfo);
 
             var grpAction = new GroupBox
             {
@@ -655,6 +656,7 @@ namespace ProjectHEQTCSDL.FormUI
                 Text = "Khách không đủ tiền phạt -> Hủy bỏ trả sách (ROLLBACK sau 10s)",
                 Location = new Point(20, 28),
                 Size = new Size(490, 24),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Checked = true,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(220, 38, 38)
@@ -665,6 +667,7 @@ namespace ProjectHEQTCSDL.FormUI
                 Text = "Khách nộp đủ tiền phạt -> Hoàn tất trả sách (COMMIT sau 10s)",
                 Location = new Point(20, 55),
                 Size = new Size(490, 24),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(22, 101, 52)
             };
@@ -674,6 +677,7 @@ namespace ProjectHEQTCSDL.FormUI
                 Text = "XÁC NHẬN TIẾP NHẬN TRẢ SÁCH",
                 Location = new Point(20, 95),
                 Size = new Size(490, 50),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 BackColor = Color.FromArgb(37, 99, 235),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
@@ -684,10 +688,10 @@ namespace ProjectHEQTCSDL.FormUI
             btnTraSach.Click += async (s, e) => await ExecuteTraSach();
 
             grpAction.Controls.AddRange(new Control[] { radRollback, radCommit, btnTraSach });
-            pnlBody.Controls.Add(grpAction);
 
-            grpAction.BringToFront();
-            grpBook.BringToFront();
+            // Thứ tự add: grpAction trước, grpBook sau để grpBook ở trên đỉnh (Dock = Top)
+            pnlBody.Controls.Add(grpAction);
+            pnlBody.Controls.Add(grpBook);
         }
 
         private async Task ExecuteTraSach()
@@ -707,7 +711,7 @@ namespace ProjectHEQTCSDL.FormUI
                     new SqlParameter("@p_CoLoiHoacHuy", coLoiHoacHuy)
                 };
 
-                var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_TiepNhanTraSach_DirtyRead", pars);
+                var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_GiaoTacTraSachThuNghiem", pars);
                 StopCountdown();
 
                 string msg = dt.Rows.Count > 0 ? (dt.Rows[0]["ThongBao"]?.ToString() ?? "") : "";
@@ -741,59 +745,147 @@ namespace ProjectHEQTCSDL.FormUI
 
     public class FrmDirtyReadWin2 : FrmConcurrencyBase
     {
-        private TextBox txtMaCuonSach = null!;
+        private TextBox txtSearch = null!;
+        private ComboBox cboDanhMuc = null!;
         private Button btnTraCuu = null!;
+        private Button btnMuonSach = null!;
         private DataGridView dgvResult = null!;
+        
+        // View Inspection Controls
+        private RadioButton radViewBook = null!;
+        private RadioButton radViewReader = null!;
+        private Button btnRefreshView = null!;
+        private DataGridView dgvView = null!;
 
         public FrmDirtyReadWin2() : base(
-            "[Cổng Tra Cứu] Độc Giả Tra Cứu Sách",
-            "Tra cứu trực tuyến trạng thái sách trong thư viện",
+            "🌐 Cổng Tra Cứu OPAC & Đăng Ký Mượn Sách (Độc Giả)",
+            "Độc giả: Trần Minh Tuấn (Mã thẻ: DG002 - Sinh viên) | Tra cứu trực tuyến & Mượn sách",
             Color.FromArgb(13, 148, 136))
         {
-            this.Text = "[Cổng Tra Cứu] Độc Giả Tra Cứu Sách";
+            this.Text = "🌐 Cổng Tra Cứu Trực Tuyến OPAC - Độc Giả Trần Minh Tuấn (DG002)";
             BuildUI();
+            _ = ExecuteTraCuu();
+            LoadViewData();
         }
 
         private void BuildUI()
         {
+            // Master TableLayoutPanel cho pnlBody: Dòng 0 (Tra cứu & Đăng ký: 118px), Dòng 1 (Khu vực 2 lưới dữ liệu: 100%)
+            var tableBody = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                Padding = new Padding(0),
+                Margin = new Padding(0)
+            };
+            tableBody.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            tableBody.RowStyles.Add(new RowStyle(SizeType.Absolute, 118f));
+            tableBody.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+
+            // 1. Hộp Tra Cứu Sách Trực Tuyến
             var grpSearch = new GroupBox
             {
-                Text = "Tra Cứu Tình Trạng Cuốn Sách",
-                Dock = DockStyle.Top,
-                Height = 100,
+                Text = "Tra Cứu Sách Trực Tuyến (Cổng OPAC)",
+                Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(15)
+                Padding = new Padding(12, 22, 12, 8)
             };
 
-            var lblMa = new Label { Text = "Mã cuốn sách:", Location = new Point(20, 25), Size = new Size(120, 22), Font = new Font("Segoe UI", 9F, FontStyle.Regular) };
-            txtMaCuonSach = new TextBox { Text = "CS001", Location = new Point(20, 48), Size = new Size(150, 28), Font = new Font("Segoe UI", 10F) };
+            var tableSearch = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 4,
+                RowCount = 2,
+                Margin = new Padding(0)
+            };
+            tableSearch.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 75f));
+            tableSearch.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+            tableSearch.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+            tableSearch.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 105f));
+
+            tableSearch.RowStyles.Add(new RowStyle(SizeType.Absolute, 32f));
+            tableSearch.RowStyles.Add(new RowStyle(SizeType.Absolute, 36f));
+
+            var lblSearch = new Label 
+            { 
+                Text = "Mã sách:", 
+                Dock = DockStyle.Fill, 
+                TextAlign = ContentAlignment.MiddleLeft, 
+                Font = new Font("Segoe UI", 9F) 
+            };
+            txtSearch = new TextBox 
+            { 
+                Text = "CS001", 
+                Dock = DockStyle.Fill, 
+                Font = new Font("Segoe UI", 10F) 
+            };
+            cboDanhMuc = new ComboBox 
+            { 
+                Dock = DockStyle.Fill, 
+                Font = new Font("Segoe UI", 9.5F), 
+                DropDownStyle = ComboBoxStyle.DropDownList 
+            };
+            cboDanhMuc.Items.AddRange(new object[] { "Mã Cuốn Sách", "Tên Sách", "Tác Giả" });
+            cboDanhMuc.SelectedIndex = 0;
 
             btnTraCuu = new Button
             {
-                Text = "TRA CỨU TRẠNG THÁI SÁCH",
-                Location = new Point(185, 45),
-                Size = new Size(325, 34),
-                BackColor = Color.FromArgb(13, 148, 136),
+                Text = "TÌM KIẾM",
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(15, 23, 42),
                 ForeColor = Color.White,
-                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btnTraCuu.FlatAppearance.BorderSize = 0;
             btnTraCuu.Click += async (s, e) => await ExecuteTraCuu();
 
-            grpSearch.Controls.AddRange(new Control[] { lblMa, txtMaCuonSach, btnTraCuu });
-            pnlBody.Controls.Add(grpSearch);
+            btnMuonSach = new Button
+            {
+                Text = "ĐĂNG KÝ MƯỢN CUỐN NÀY NGAY",
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(220, 38, 38),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 4, 0, 0)
+            };
+            btnMuonSach.FlatAppearance.BorderSize = 0;
+            btnMuonSach.Click += async (s, e) => await ExecuteMuonSach();
 
+            tableSearch.Controls.Add(lblSearch, 0, 0);
+            tableSearch.Controls.Add(txtSearch, 1, 0);
+            tableSearch.Controls.Add(cboDanhMuc, 2, 0);
+            tableSearch.Controls.Add(btnTraCuu, 3, 0);
+            tableSearch.Controls.Add(btnMuonSach, 0, 1);
+            tableSearch.SetColumnSpan(btnMuonSach, 4);
+
+            grpSearch.Controls.Add(tableSearch);
+            tableBody.Controls.Add(grpSearch, 0, 0);
+
+            // 2. Khu Vực Hiển Thị 2 Bảng Dữ Liệu (Tỷ lệ 48% / 52%)
+            var tableGrids = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                Margin = new Padding(0)
+            };
+            tableGrids.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            tableGrids.RowStyles.Add(new RowStyle(SizeType.Percent, 48f));
+            tableGrids.RowStyles.Add(new RowStyle(SizeType.Percent, 52f));
+
+            // Bảng 1: Kết quả tra cứu sách
             var grpResult = new GroupBox
             {
-                Text = "Kết Quả Tra Cứu Từ CSDL",
-                Dock = DockStyle.Top,
-                Height = 150,
+                Text = "Kết Quả Tra Cứu Sách",
+                Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Padding = new Padding(10)
+                Padding = new Padding(10, 20, 10, 8)
             };
-
             dgvResult = new DataGridView
             {
                 Dock = DockStyle.Fill,
@@ -805,15 +897,87 @@ namespace ProjectHEQTCSDL.FormUI
                 Font = new Font("Segoe UI", 9F)
             };
             grpResult.Controls.Add(dgvResult);
-            pnlBody.Controls.Add(grpResult);
+            tableGrids.Controls.Add(grpResult, 0, 0);
 
-            grpResult.BringToFront();
-            grpSearch.BringToFront();
+            // Bảng 2: Sổ mượn cá nhân & tình trạng bản sao trong CSDL
+            var grpView = new GroupBox
+            {
+                Text = "Sổ Mượn Cá Nhân (DG002) và Tình Trạng Bản Sao",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                Padding = new Padding(10, 20, 10, 8)
+            };
+
+            var pnlViewControls = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                Height = 32,
+                ColumnCount = 3,
+                RowCount = 1,
+                Margin = new Padding(0)
+            };
+            pnlViewControls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48f));
+            pnlViewControls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52f));
+            pnlViewControls.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 95f));
+            pnlViewControls.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+
+            radViewBook = new RadioButton 
+            { 
+                Text = "Ai đang giữ CS001?", 
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F), 
+                Checked = true
+            };
+            radViewReader = new RadioButton 
+            { 
+                Text = "Sổ mượn cá nhân (DG002)", 
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F)
+            };
+            radViewBook.CheckedChanged += (s, e) => { if (radViewBook.Checked) LoadViewData(); };
+            radViewReader.CheckedChanged += (s, e) => { if (radViewReader.Checked) LoadViewData(); };
+
+            btnRefreshView = new Button
+            {
+                Text = "LÀM MỚI",
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(71, 85, 105),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnRefreshView.FlatAppearance.BorderSize = 0;
+            btnRefreshView.Click += (s, e) => LoadViewData();
+
+            pnlViewControls.Controls.Add(radViewBook, 0, 0);
+            pnlViewControls.Controls.Add(radViewReader, 1, 0);
+            pnlViewControls.Controls.Add(btnRefreshView, 2, 0);
+
+            dgvView = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                AllowUserToAddRows = false,
+                BackgroundColor = Color.FromArgb(248, 250, 252),
+                RowHeadersVisible = false,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                Font = new Font("Segoe UI", 9F)
+            };
+
+            grpView.Controls.Add(dgvView);
+            grpView.Controls.Add(pnlViewControls);
+            pnlViewControls.BringToFront();
+
+            tableGrids.Controls.Add(grpView, 0, 1);
+            tableBody.Controls.Add(tableGrids, 0, 1);
+
+            pnlBody.Controls.Add(tableBody);
         }
 
         private async Task ExecuteTraCuu()
         {
-            string maCS = txtMaCuonSach.Text.Trim();
+            string maCS = txtSearch.Text.Trim();
             if (string.IsNullOrEmpty(maCS)) maCS = "CS001";
 
             try
@@ -821,33 +985,112 @@ namespace ProjectHEQTCSDL.FormUI
                 var pars = new SqlParameter[] { new SqlParameter("@p_MaCuonSach", maCS) };
                 var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_TraCuuSach_DirtyRead", pars);
                 dgvResult.DataSource = dt;
-
-                if (dt.Rows.Count > 0)
-                {
-                    string trangThai = dt.Rows[0]["TrangThai"].ToString() ?? "";
-                    string tenSach = dt.Rows[0]["TenSach"].ToString() ?? "";
-
-                    if (trangThai.Equals("CoSan", StringComparison.OrdinalIgnoreCase))
-                    {
-                        SetAlert("Phát Hiện Dữ Liệu Chưa Chốt (Dirty Read)", $"Sách '{tenSach}' hiện có TrangThai = 'CoSan'. Đây là dữ liệu chưa commit từ quầy thủ thư!", AlertType.Warning);
-                        MessageBox.Show($"Tìm thấy cuốn sách: {tenSach} ({maCS})\nTrạng thái: CÓ SẴN (CoSan)\n\nCẢNH BÁO TƯƠNG TRANH: Bạn đang đọc với mức READ UNCOMMITTED khi thủ thư đang mở giao tác. Nếu thủ thư hủy giao dịch, trạng thái này là DỮ LIỆU RÁC!", "Kết Quả Tra Cứu (READ UNCOMMITTED)", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    }
-                    else
-                    {
-                        SetAlert("Tra Cứu Thành Công", $"Sách '{tenSach}' hiện có TrangThai = '{trangThai}' (Đang mượn).", AlertType.Info);
-                        MessageBox.Show($"Tìm thấy cuốn sách: {tenSach} ({maCS})\nTrạng thái: ĐANG MƯỢN (DangMuon)\n\n(Dữ liệu thực tế sau khi giao tác trả sách bị hủy).", "Kết Quả Tra Cứu", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                }
-                else
-                {
-                    SetAlert("Không Tìm Thấy", $"Không tìm thấy cuốn sách có mã '{maCS}'.", AlertType.Warning);
-                    MessageBox.Show($"Không tìm thấy cuốn sách mã '{maCS}' trong hệ thống.", "Thông Báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
             }
             catch (Exception ex)
             {
-                SetAlert("Lỗi Tra Cứu", ex.Message, AlertType.Danger);
                 MessageBox.Show("Lỗi tra cứu: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void LoadViewData()
+        {
+            try
+            {
+                string query = "";
+                if (radViewBook.Checked)
+                {
+                    query = @"
+                        SELECT c.MaCuonSach, c.TrangThai, 
+                               ISNULL(dg.HoTen, ISNULL(v.MaDG, N'Chưa có người mượn')) AS NguoiDangGiua,
+                               ISNULL(v.MaPhieuMuon, '') AS PhieuMuon
+                        FROM CuonSach c WITH (NOLOCK)
+                        LEFT JOIN View_LichSuMuon_DocGia v WITH (NOLOCK) ON c.MaCuonSach = v.MaCuonSach AND v.TrangThai = 'DangMuon'
+                        LEFT JOIN DocGia dg WITH (NOLOCK) ON v.MaDG = dg.MaDG
+                        WHERE c.MaCuonSach = 'CS001'";
+                }
+                else
+                {
+                    query = @"
+                        SELECT v.MaPhieuMuon, v.MaCuonSach, v.TenSach, v.NgayMuon, v.NgayHenTra
+                        FROM View_LichSuMuon_DocGia v WITH (NOLOCK)
+                        WHERE v.MaDG = 'DG002' AND v.TrangThai = 'DangMuon'";
+                }
+
+                var dt = DatabaseHelper.ExecuteQuery(query);
+                dgvView.DataSource = dt;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi tải view: " + ex.Message, "Lỗi CSDL", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async Task ExecuteMuonSach()
+        {
+            string maCS = txtSearch.Text.Trim();
+            if (string.IsNullOrEmpty(maCS)) return;
+
+            btnMuonSach.Enabled = false;
+            btnTraCuu.Enabled = false;
+            StartCountdown(10, "Đang gửi yêu cầu mượn lên CSDL - Chờ CSDL kiểm tra khóa tài nguyên...");
+
+            try
+            {
+                string maPM = "PM" + DateTime.Now.ToString("HHmmss");
+                string maDG = "DG002"; // Trần Minh Tuấn
+
+                var dtBooks = new DataTable();
+                dtBooks.Columns.Add("MaCuonSach", typeof(string));
+                dtBooks.Rows.Add(maCS);
+
+                var pars = new SqlParameter[]
+                {
+                    new SqlParameter("@p_MaPhieuMuon", maPM),
+                    new SqlParameter("@p_MaDG", maDG),
+                    new SqlParameter("@p_MaNV", "NV001"),
+                    new SqlParameter("@p_NgayHenTra", DateTime.Now.AddDays(14)),
+                    new SqlParameter("@p_DanhSachCuonSach", SqlDbType.Structured)
+                    {
+                        TypeName = "dbo.DanhSachCuonSachType",
+                        Value = dtBooks
+                    }
+                };
+
+                var dt = await DatabaseHelper.ExecuteProcedureAsync("sp_LapPhieuMuon", pars);
+                StopCountdown();
+
+                int isSuccess = 0;
+                string msg = "Không có phản hồi từ máy chủ!";
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    msg = dt.Rows[0]["ThongBao"]?.ToString() ?? msg;
+                    isSuccess = msg.StartsWith("Lỗi", StringComparison.OrdinalIgnoreCase) ? 0 : 1;
+                }
+
+                if (isSuccess == 1)
+                {
+                    SetAlert("Mượn Sách Thành Công", $"[{DateTime.Now:HH:mm:ss}] {msg}", AlertType.Success);
+                    radViewReader.Checked = true;
+                }
+                else
+                {
+                    SetAlert("Không Thể Mượn Sách", $"[{DateTime.Now:HH:mm:ss}] {msg}", AlertType.Danger);
+                    radViewBook.Checked = true;
+                }
+
+                await ExecuteTraCuu();
+                LoadViewData();
+                OnDataChanged?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                StopCountdown();
+                SetAlert("Lỗi Xử Lý Giao Tác", ex.Message, AlertType.Danger);
+            }
+            finally
+            {
+                btnMuonSach.Enabled = true;
+                btnTraCuu.Enabled = true;
             }
         }
     }

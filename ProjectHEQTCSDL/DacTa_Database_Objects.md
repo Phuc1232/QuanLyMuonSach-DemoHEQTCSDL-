@@ -976,44 +976,13 @@ GO
 
 ---
 
-## 7. STORED PROCEDURES MÔ PHỎNG TƯƠNG TRANH
-
-Các Stored Procedures phục vụ module demo Interactive GUI cho 4 kịch bản tương tranh.
-
-### 7.1. Kịch bản 1: Mất bản cập nhật (Lost Update)
-*   **Tên SP:** `sp_Demo_LostUpdate_CapNhat`
-*   **Mục đích:** Cập nhật trực tiếp trạng thái vật lý của cuốn sách mà không sử dụng khóa hay kiểm tra giá trị cũ, dẫn đến thao tác ghi đè mất bản cập nhật khi có 2 luồng cùng lúc.
-*   **Cơ chế:** Dùng `UPDATE CuonSach SET TinhTrang = @p_TinhTrangMoi WHERE MaCuonSach = @p_MaCuonSach` không bắt điều kiện tình trạng cũ.
-
-### 7.2. Kịch bản 2: Đọc dữ liệu rác (Dirty Read)
-*   **Tên SP:** `sp_Demo_DirtyRead_TraCuu`
-*   **Mục đích:** Mô phỏng độc giả tra cứu dữ liệu chưa chốt (Uncommitted) trong khi thủ thư đang mở Transaction xử lý sách.
-*   **Cơ chế:** Sử dụng mức cô lập `SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;` để vượt qua Shared Lock và đọc dữ liệu đang bị khóa.
-
-### 7.3. Kịch bản 3: Đọc không nhất quán (Non-Repeatable Read)
-*   **Tên SP 1 (Quản lý Kiểm kê):** `sp_BaoCaoKiemKeKho`
-    *   **Mục đích:** Đếm số sách đang có sẵn bằng mức cô lập mặc định `READ COMMITTED`. Mức cô lập này nhả Shared Lock (S-Lock) ngay sau khi đọc lần 1, tạo kẽ hở 10s để luồng khác sửa đổi dữ liệu.
-    *   **Giải pháp:** Nâng mức cô lập lên `SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;` để giữ S-Lock đến hết Transaction, tự động chặn luồng khác sửa bản ghi.
-    *   **View đối chiếu:** `View_QuanLyKhoSach_Admin` và bảng `CuonSach` của đầu sách `S001`.
-*   **Tên SP 2 (Thủ thư Cho Mượn):** `sp_Demo_NonRepeatableRead_ChoMuon`
-    *   **Mục đích:** Cập nhật cuốn sách `CS002` sang trạng thái `DangMuon` để xen vào giữa giao dịch đếm lần 1 và lần 2 của Quản lý, làm thay đổi tập kết quả từ 3 cuốn xuống 2 cuốn.
-
-### 7.4. Kịch bản 4: Đọc dòng bóng ma (Phantom Read)
-*   **Tên SP 1 (Kế toán Tổng hợp):** `sp_BaoCaoTongHopPhieuPhat`
-    *   **Mục đích:** Đếm tổng số phiếu phạt trong thư viện bằng mức cô lập `REPEATABLE READ`. Mức này chỉ khóa các dòng hiện hữu (Row Lock) mà không khóa khoảng trống dải dữ liệu (Gap / Key-Range Lock). Trong 10s chờ đọc lần 2, cho phép luồng khác chèn bản ghi mới.
-    *   **Giải pháp:** Nâng mức cô lập lên `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;` để SQL Server thiết lập khóa Key-Range (RangeS-S), tự động chặn mọi thao tác INSERT vào dải dữ liệu cho đến khi Transaction kết thúc.
-    *   **View đối chiếu:** `View_DanhSachPhieuPhat_ChiTiet` (hiển thị rõ dòng bóng ma `PP999` xuất hiện ở lần đọc 2).
-*   **Tên SP 2 (Thủ thư Lập Phiếu Phạt):** `sp_TaoPhieuPhatNhanh`
-    *   **Mục đích:** Chèn mới bản ghi phiếu phạt `PP999` vào bảng `PhieuPhat` trong lúc Kế toán đang mở Transaction tổng hợp, tạo ra hiện tượng Phantom Read.
-
----
 
 ## 8. CÁC DATABASE OBJECTS CHUẨN HÓA BỔ SUNG (TÁCH BIỆT ĐỘC LẬP T-SQL CỦA FORMUI)
 
 Nhằm đáp ứng 100% chuẩn mực môn Hệ Quản Trị Cơ Sở Dữ Liệu (nguyên tắc Độc lập dữ liệu và Đóng gói toàn vẹn giao tác ACID), toàn bộ các câu lệnh T-SQL phức tạp (nhiều JOIN, phân tích tổng hợp, DML trực tiếp) trong tầng giao diện FormUI đã được tách biệt độc lập sang các Database Objects sau:
 
 ### 8.1. Khung Nhìn (Views)
-1. **`View_QuanLyTaiKhoan_Admin`**: Hợp nhất `View_TaiKhoan_Role`, `DocGia`, `NhanVien`, phục vụ quản trị người dùng trên `FrmMainAdmin`.
+1. **`View_QuanLyTaiKhoan_Admin`**: Hợp nhất `View_TaiKhoan_Role`, `DocGia`, `NhanVien`, hiển thị song song Trạng thái tài khoản (`TaiKhoan.TrangThai`) và Trạng thái thẻ thư viện (`TrangThaiThe`), phục vụ quản trị người dùng trên `FrmMainAdmin`.
 2. **`View_QuanLyKhoSach_Admin`**: Hợp nhất `View_DanhSachDauSach` và `CuonSach`, tính toán số lượng bản sao, số bản có sẵn, số bản đang mượn (`COUNT`, `SUM(CASE WHEN...)`) trực tiếp tại CSDL cho `FrmMainAdmin`.
 3. **`View_DanhSachPhieuMuonHienHanh`**: Hợp nhất `PhieuMuon`, `DocGia`, gọi `dbo.fn_TinhSoNgayTre` trên Server, lọc các phiếu `DangMuon` và `QuaHan` cho `FrmMainThuThu`.
 4. **`View_DanhSachPhieuPhat_ChiTiet`**: Hợp nhất `PhieuPhat`, `PhieuMuon`, `DocGia` cho màn hình quản lý thu phạt của Thủ thư (`FrmMainThuThu`).

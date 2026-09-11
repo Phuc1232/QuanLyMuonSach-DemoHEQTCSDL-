@@ -300,6 +300,38 @@ namespace ProjectHEQTCSDL.FormUI
 
             pnlAccToolbar.Controls.AddRange(new Control[] { btnLock, btnUnlock, btnResetPass, btnRefreshAcc });
             dgvTaiKhoan = CreateStandardGrid();
+            dgvTaiKhoan.CellFormatting += (s, e) =>
+            {
+                if (e.RowIndex < 0 || e.Value == null) return;
+                var colName = dgvTaiKhoan.Columns[e.ColumnIndex].Name;
+                string val = e.Value.ToString() ?? "";
+
+                if (colName == "TrangThaiThe")
+                {
+                    if (val == "TamKhoa" || val == "HetHan")
+                    {
+                        e.CellStyle.ForeColor = Color.FromArgb(220, 38, 38);
+                        e.CellStyle.Font = new Font(dgvTaiKhoan.Font, FontStyle.Bold);
+                    }
+                    else if (val == "ConHan")
+                    {
+                        e.CellStyle.ForeColor = Color.FromArgb(22, 163, 74);
+                        e.CellStyle.Font = new Font(dgvTaiKhoan.Font, FontStyle.Bold);
+                    }
+                }
+                else if (colName == "TrangThai")
+                {
+                    if (val == "Khoa")
+                    {
+                        e.CellStyle.ForeColor = Color.FromArgb(220, 38, 38);
+                        e.CellStyle.Font = new Font(dgvTaiKhoan.Font, FontStyle.Bold);
+                    }
+                    else if (val == "HoatDong")
+                    {
+                        e.CellStyle.ForeColor = Color.FromArgb(22, 163, 74);
+                    }
+                }
+            };
 
             var lblAccHeader = new Label { Text = "DANH SÁCH TÀI KHOẢN NGƯỜI DÙNG TẠI HỆ THỐNG:", Dock = DockStyle.Top, Height = 35, Font = new Font("Segoe UI", 11F, FontStyle.Bold), Padding = new Padding(10, 8, 0, 0), ForeColor = Color.FromArgb(30, 58, 138) };
 
@@ -466,9 +498,11 @@ namespace ProjectHEQTCSDL.FormUI
                 if (dgvTaiKhoan.Columns.Contains("MaTaiKhoan")) dgvTaiKhoan.Columns["MaTaiKhoan"].HeaderText = "Mã TK";
                 if (dgvTaiKhoan.Columns.Contains("TenDangNhap")) dgvTaiKhoan.Columns["TenDangNhap"].HeaderText = "Tên Đăng Nhập";
                 if (dgvTaiKhoan.Columns.Contains("TenRole")) dgvTaiKhoan.Columns["TenRole"].HeaderText = "Vai Trò";
-                if (dgvTaiKhoan.Columns.Contains("TrangThai")) dgvTaiKhoan.Columns["TrangThai"].HeaderText = "Trạng Thái";
+                if (dgvTaiKhoan.Columns.Contains("TrangThai")) dgvTaiKhoan.Columns["TrangThai"].HeaderText = "Trạng Thái TK";
+                if (dgvTaiKhoan.Columns.Contains("TrangThaiThe")) dgvTaiKhoan.Columns["TrangThaiThe"].HeaderText = "Trạng Thái Thẻ";
                 if (dgvTaiKhoan.Columns.Contains("NgayTao")) dgvTaiKhoan.Columns["NgayTao"].HeaderText = "Ngày Tạo";
                 if (dgvTaiKhoan.Columns.Contains("HoTenNguoiDung")) dgvTaiKhoan.Columns["HoTenNguoiDung"].HeaderText = "Họ Tên";
+                if (dgvTaiKhoan.Columns.Contains("SDT")) dgvTaiKhoan.Columns["SDT"].HeaderText = "SĐT";
             }
             catch { }
         }

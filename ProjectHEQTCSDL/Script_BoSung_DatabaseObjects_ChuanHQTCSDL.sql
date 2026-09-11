@@ -17,7 +17,9 @@ GO
 -- 1.1. View Quản Lý Tài Khoản (Dành cho Quản trị viên FrmMainAdmin)
 -- Thay thế truy vấn JOIN 3 bảng/view tại FrmMainAdmin.LoadTaiKhoan
 CREATE OR ALTER VIEW [dbo].[View_QuanLyTaiKhoan_Admin] AS
-SELECT v.MaTaiKhoan, v.TenDangNhap, v.TenRole, v.TrangThai, v.NgayTao,
+SELECT v.MaTaiKhoan, v.TenDangNhap, v.TenRole, v.TrangThai,
+       ISNULL(dg.TrangThai, N'—') AS TrangThaiThe,
+       v.NgayTao,
        ISNULL(dg.HoTen, nv.HoTen) AS HoTenNguoiDung,
        ISNULL(dg.SDT, nv.SDT) AS SDT
 FROM View_TaiKhoan_Role v

@@ -14,6 +14,7 @@ namespace ProjectHEQTCSDL.FormUI
         private ComboBox cboScenario = null!;
         private Button btnLaunchWindows = null!;
         private Button btnRefreshDB = null!;
+
         private DataGridView dgvDBState = null!;
         private TextBox txtExplanation = null!;
         private Label lblScenarioSummary = null!;
@@ -373,6 +374,8 @@ namespace ProjectHEQTCSDL.FormUI
                 }
             }
         }
+
+
 
         private void LaunchSubWindows()
         {
